@@ -1,5 +1,3 @@
-package chatPackage;
-
 import java.io.*;
 import java.net.*;
 
@@ -9,10 +7,11 @@ public class ChatClient {
     private PrintWriter out;
     private ChatInterface chatInterface;
     private String username; // Field to store the username
+    private String password; // Field to store the password
 
-    public ChatClient(String serverAddress, int port, ChatInterface chatInterface, String username) {
-        this.chatInterface = chatInterface;
+    public ChatClient(String serverAddress, int port, String username, String password) {
         this.username = username; // Set the username
+        this.password = password; // Set the password
 
         connectToServer(serverAddress, port); // Try to connect on initialization
     }
@@ -26,8 +25,8 @@ public class ChatClient {
                     in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
                     out = new PrintWriter(socket.getOutputStream(), true);
 
-                    // Send username to the server (if needed)
-                    out.println("USERNAME:" + username);
+                    // Send username and password to the server
+                    out.println("LOGIN:" + username + ":" + password); // Format: LOGIN:username:password
 
                     // Clear chat area once connected
                     chatInterface.clearChatArea();
@@ -50,16 +49,6 @@ public class ChatClient {
     // Method to send messages to the server
     public void sendMessage(String message) {
         out.println(message); // Send message to the server
-    }
-
-    // Method to send a private message to a specific user
-    public void sendPrivateMessage(String recipient, String message) {
-        out.println("PRIVATE:" + recipient + ":" + message); // Format: PRIVATE:recipient:message
-    }
-
-    // Method to get the username
-    public String getUsername() {
-        return username; // Return the stored username
     }
 
     // Handle incoming messages from the server

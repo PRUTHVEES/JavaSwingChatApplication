@@ -1,167 +1,105 @@
-package serverPackage;
-
 import java.io.*;
 import java.net.*;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.SQLException;
 import java.util.*;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public class ChatServer {
-    private static Set<ClientHandler> clientHandlers = new HashSet<>();
-    private static List<String> messageHistory = new ArrayList<>(); // To store the history of messages
-    private static AtomicInteger userIdCounter = new AtomicInteger(1); // Counter to assign unique user IDs
-    private static Connection dbConnection = null; // Database connection
+    private static final int PORT = 12345; // Define the port
+    private static Set<PrintWriter> clientWriters = new HashSet<>();
+    private static Map<String, String> userCredentials = new HashMap<>(); // To store usernames and passwords
 
-    public static void main(String[] args) throws IOException {
-        // Initialize database connection
-        initializeDatabaseConnection();
+    public static void main(String[] args) {
+        loadUserCredentials(); // Load predefined credentials
 
-        ServerSocket serverSocket = new ServerSocket(12345); // Server listens on port 12345
-        System.out.println("Chat server started...");
-
-        while (true) {
-            Socket socket = serverSocket.accept(); // Accept client connection
-            int userId = userIdCounter.getAndIncrement(); // Assign a unique user ID
-            System.out.println("New user (User ID: " + userId + ") connected!");
-            ClientHandler clientHandler = new ClientHandler(socket, userId);
-            clientHandlers.add(clientHandler);
-            new Thread(clientHandler).start(); // Handle client in a separate thread
-        }
-    }
-
-    // Method to initialize the MySQL database connection
-    private static void initializeDatabaseConnection() {
-        String url = "jdbc:mysql://localhost:3306/chat_db"; // Replace with your database URL
-        String user = "root"; // Replace with your MySQL username
-        String password = ""; // Replace with your MySQL password
-
-        
-        while(dbConnection == null) {
-            try {
-                dbConnection = DriverManager.getConnection(url, user, password);
-                System.out.println("Connected to the MySQL database successfully.");
-            } catch (SQLException e) {
-                System.out.println("Failed to connect to MySQL database.");
-                e.printStackTrace();
-                try {
-                    Thread.sleep(5000); // Wait for 5 seconds before retrying
-                } catch (InterruptedException ie) {
-                    Thread.currentThread().interrupt();
-                }
-            }
-        }
-    }
-
-    // Broadcast message to all connected clients
-    public static void broadcastMessage(String message, ClientHandler sender) {
-        // Add message to history
-        messageHistory.add(message);
-
-        for (ClientHandler client : clientHandlers) {
-            if (client != sender) {
-                client.sendMessage(message);
-            }
-        }
-    }
-
-    // Remove client if they disconnect
-    public static void removeClient(ClientHandler clientHandler) {
-        clientHandlers.remove(clientHandler);
-        String disconnectedMessage = clientHandler.getName() + " (User ID: " + clientHandler.getUserId() + ") disconnected.";
-        System.out.println(disconnectedMessage);
-
-        broadcastMessage(disconnectedMessage, clientHandler);
-        broadcastUserList();  // Update user list when someone disconnects
-    }
-
-    // Send the message history to a new client
-    public static void sendHistory(ClientHandler clientHandler) {
-        for (String message : messageHistory) { 
-            clientHandler.sendMessage(message);
-        }
-    }
-
-    // Broadcast the list of currently connected users
-    public static void broadcastUserList() {
-        List<String> userList = new ArrayList<>();
-        for (ClientHandler client : clientHandlers) {
-            userList.add(client.getName());
-        }
-
-        // Convert the user list to a string
-        String userListMessage = "USER_LIST:" + String.join(",", userList);
-        for (ClientHandler client : clientHandlers) {
-            client.sendMessage(userListMessage);
-        }
-    }
-}
-
-// Handles communication with individual clients
-class ClientHandler implements Runnable {
-    private Socket socket;
-    private PrintWriter out;
-    private BufferedReader in;
-    private int userId;
-    private String name; // Add a field for the user's name
-
-    public ClientHandler(Socket socket, int userId) {
-        this.socket = socket;
-        this.userId = userId;
-    }
-
-    public int getUserId() {
-        return userId;
-    }
-
-    public String getName() {
-        return name; // Method to get the user's name
-    }
-
-    @Override
-    public void run() {
-        try {
-            in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-            out = new PrintWriter(socket.getOutputStream(), true);
-
-            // Ask the user to enter their name
-            out.println("Please enter your name: ");
-            name = in.readLine(); // Read the user's name
-
-            // Notify the newly connected user with their ID and name
-            out.println("You are connected as " + name + " (User ID: " + userId + ")");
-
-            // Notify all other clients that a new user has connected
-            String connectionMessage = name + " has joined the chat!";
-            ChatServer.broadcastMessage(connectionMessage, this);
-
-            // Broadcast the updated user list to all clients
-            ChatServer.broadcastUserList();
-
-            // Send the message history to the new client
-            ChatServer.sendHistory(this);
-
-            // Read messages from client
-            String message;
-            while ((message = in.readLine()) != null) {
-                String formattedMessage = name + " (User ID: " + userId + "): " + message;
-                System.out.println("Received: " + formattedMessage);
-                ChatServer.broadcastMessage(formattedMessage, this); // Broadcast message to all clients
+        System.out.println("Chat Server started...");
+        try (ServerSocket serverSocket = new ServerSocket(PORT)) {
+            while (true) {
+                new ClientHandler(serverSocket.accept()).start(); // Handle new client connections
             }
         } catch (IOException e) {
             e.printStackTrace();
-        } finally {
-            try {
-                socket.close();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-            ChatServer.removeClient(this);
         }
     }
 
-    public void sendMessage(String message) {
-        out.println(message); // Send message to the client
+    private static void loadUserCredentials() {
+        // Predefined usernames and passwords (this could also come from a database)
+        userCredentials.put("user1", "pass1");
+        userCredentials.put("user2", "pass2");
+    }
+
+    private static class ClientHandler extends Thread {
+        private Socket socket;
+        private PrintWriter out;
+        private BufferedReader in;
+        private String username; // Store the username after login
+
+        public ClientHandler(Socket socket) {
+            this.socket = socket;
+        }
+
+        public void run() {
+            try {
+                in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+                out = new PrintWriter(socket.getOutputStream(), true);
+                synchronized (clientWriters) {
+                    clientWriters.add(out); // Add client writer to the set
+                }
+
+                // Handle login
+                String loginMessage;
+                while ((loginMessage = in.readLine()) != null) {
+                    if (loginMessage.startsWith("LOGIN:")) {
+                        String[] parts = loginMessage.split(":");
+                        if (parts.length == 3) {
+                            String usernameAttempt = parts[1];
+                            String passwordAttempt = parts[2];
+
+                            // Check credentials
+                            if (checkCredentials(usernameAttempt, passwordAttempt)) {
+                                username = usernameAttempt; // Set username on successful login
+                                out.println("Welcome " + username + "!"); // Send welcome message
+                                broadcast(username + " has joined the chat."); // Notify others
+                                break; // Exit loop to start handling messages
+                            } else {
+                                out.println("ERROR: Invalid username or password. Please try again.");
+                            }
+                        }
+                    }
+                }
+
+                // Handle incoming messages
+                String message;
+                while ((message = in.readLine()) != null) {
+                    if (username != null) {
+                        broadcast(username + ": " + message); // Broadcast message with username
+                    }
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            } finally {
+                try {
+                    socket.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                synchronized (clientWriters) {
+                    clientWriters.remove(out); // Remove client writer on disconnect
+                }
+                if (username != null) {
+                    broadcast(username + " has left the chat."); // Notify others
+                }
+            }
+        }
+
+        private boolean checkCredentials(String username, String password) {
+            return password.equals(userCredentials.get(username)); // Check the stored credentials
+        }
+
+        private void broadcast(String message) {
+            synchronized (clientWriters) {
+                for (PrintWriter writer : clientWriters) {
+                    writer.println(message); // Send message to all connected clients
+                }
+            }
+        }
     }
 }
