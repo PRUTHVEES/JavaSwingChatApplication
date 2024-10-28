@@ -2,6 +2,9 @@ package serverPackage;
 
 import java.io.*;
 import java.net.*;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -9,8 +12,12 @@ public class ChatServer {
     private static Set<ClientHandler> clientHandlers = new HashSet<>();
     private static List<String> messageHistory = new ArrayList<>(); // To store the history of messages
     private static AtomicInteger userIdCounter = new AtomicInteger(1); // Counter to assign unique user IDs
+    private static Connection dbConnection = null; // Database connection
 
     public static void main(String[] args) throws IOException {
+        // Initialize database connection
+        initializeDatabaseConnection();
+
         ServerSocket serverSocket = new ServerSocket(12345); // Server listens on port 12345
         System.out.println("Chat server started...");
 
@@ -21,6 +28,21 @@ public class ChatServer {
             ClientHandler clientHandler = new ClientHandler(socket, userId);
             clientHandlers.add(clientHandler);
             new Thread(clientHandler).start(); // Handle client in a separate thread
+        }
+    }
+
+    // Method to initialize the MySQL database connection
+    private static void initializeDatabaseConnection() {
+        String url = "jdbc:mysql://localhost:3306/chat_db"; // Replace with your database URL
+        String user = "root"; // Replace with your MySQL username
+        String password = ""; // Replace with your MySQL password
+
+        try {
+            dbConnection = DriverManager.getConnection(url, user, password);
+            System.out.println("Connected to the MySQL database successfully.");
+        } catch (SQLException e) {
+            System.out.println("Failed to connect to MySQL database.");
+            e.printStackTrace();
         }
     }
 
