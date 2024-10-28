@@ -37,12 +37,20 @@ public class ChatServer {
         String user = "root"; // Replace with your MySQL username
         String password = ""; // Replace with your MySQL password
 
-        try {
-            dbConnection = DriverManager.getConnection(url, user, password);
-            System.out.println("Connected to the MySQL database successfully.");
-        } catch (SQLException e) {
-            System.out.println("Failed to connect to MySQL database.");
-            e.printStackTrace();
+        
+        while(dbConnection == null) {
+            try {
+                dbConnection = DriverManager.getConnection(url, user, password);
+                System.out.println("Connected to the MySQL database successfully.");
+            } catch (SQLException e) {
+                System.out.println("Failed to connect to MySQL database.");
+                e.printStackTrace();
+                try {
+                    Thread.sleep(5000); // Wait for 5 seconds before retrying
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                }
+            }
         }
     }
 
