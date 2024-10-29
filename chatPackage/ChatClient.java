@@ -1,3 +1,7 @@
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.io.*;
 import java.net.*;
 
@@ -5,94 +9,138 @@ public class ChatClient {
     private Socket socket;
     private BufferedReader in;
     private PrintWriter out;
-    private ChatInterface chatInterface;
     private String username;
     private String password;
-    private int loginAttempts;
+    private int loginAttempts = 3;
 
-    public ChatClient(String serverAddress, int port, String username, String password, ChatInterface chatInterface) {
-        this.username = username;
-        this.password = password;
-        this.chatInterface = chatInterface;
-        this.loginAttempts = 0;
+    public ChatClient(String serverAddress, int port) {
         connectToServer(serverAddress, port);
     }
 
     private void connectToServer(String serverAddress, int port) {
         new Thread(() -> {
-            while (true) {
-                try {
-                    socket = new Socket(serverAddress, port);
-                    in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-                    out = new PrintWriter(socket.getOutputStream(), true);
+            try {
+                socket = new Socket(serverAddress, port);
+                in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+                out = new PrintWriter(socket.getOutputStream(), true);
 
-                    // Send login credentials
-                    out.println("LOGIN:" + username + ":" + password);
-
-                    // Clear chat area on successful connection
-                    if (chatInterface != null) {
-                        chatInterface.clearChatArea();
-                    }
-
-                    // Start thread to handle incoming messages
-                    new Thread(new IncomingMessageHandler()).start();
-                    break;
-                } catch (IOException e) {
-                    if (chatInterface != null) {
-                        chatInterface.restartWithError("Error: Unable to connect to server. Retrying...");
-                    }
-                    try {
-                        Thread.sleep(5000);
-                    } catch (InterruptedException interruptedException) {
-                        Thread.currentThread().interrupt();
-                    }
-                }
+                // Start a thread to listen for incoming messages
+                new Thread(new IncomingMessageHandler()).start();
+            } catch (IOException e) {
+                System.err.println("Error: Unable to connect to the server.");
             }
         }).start();
     }
 
-    public void sendMessage(String message) {
-        if (out != null) {
-            out.println(message);
-        }
+    public void sendLoginCredentials(String username, String password) {
+        this.username = username;
+        this.password = password;
+        out.println("LOGIN:" + username + ":" + password);
     }
 
-    public class IncomingMessageHandler implements Runnable {
+    public void sendMessage(String message) {
+        out.println(message);
+    }
+
+    private class IncomingMessageHandler implements Runnable {
         @Override
         public void run() {
             try {
                 String message;
                 while ((message = in.readLine()) != null) {
-                    if (chatInterface != null) {
-                        // Check for invalid login message
-                        if (message.equals("ERROR: Invalid username or password. Please try again.")) {
-                            loginAttempts++;
-                            if (loginAttempts >= 3) {
-                                chatInterface.displayMessage("Maximum login attempts reached. Exiting.");
-                                System.exit(0); // Exit application after max attempts
-                            } else {
-                                chatInterface.displayMessage("Invalid login. Please try again. Attempts remaining: " + (3 - loginAttempts));
-                                chatInterface.resetLoginFields(); // Clear username and password fields
-                            }
-                        } else {
-                            chatInterface.receiveMessage(message);
-                        }
-                    }
+                    System.out.println("Received: " + message);
                 }
             } catch (IOException e) {
-                if (chatInterface != null) {
-                    chatInterface.restartWithError("Disconnected from server. Please try reconnecting.");
-                }
+                e.printStackTrace();
             }
         }
     }
 
-    // Main method to run the ChatClient application
+    public static class ChatInterface {
+        private JFrame frame;
+        private JTextArea chatArea;
+        private JTextField messageField;
+        private JTextField usernameField;
+        private JPasswordField passwordField;
+        private JButton sendButton;
+        private JButton loginButton;
+        private ChatClient chatClient;
+
+        public ChatInterface(ChatClient chatClient) {
+            this.chatClient = chatClient;
+            initializeUI();
+        }
+
+        private void initializeUI() {
+            frame = new JFrame("Chat Client");
+            chatArea = new JTextArea(20, 50);
+            messageField = new JTextField(40);
+            usernameField = new JTextField(15);
+            passwordField = new JPasswordField(15);
+            sendButton = new JButton("Send");
+            loginButton = new JButton("Login");
+
+            chatArea.setEditable(false);
+            JScrollPane scrollPane = new JScrollPane(chatArea);
+            frame.setLayout(new BorderLayout());
+            frame.add(scrollPane, BorderLayout.CENTER);
+
+            JPanel loginPanel = new JPanel();
+            loginPanel.add(new JLabel("Username:"));
+            loginPanel.add(usernameField);
+            loginPanel.add(new JLabel("Password:"));
+            loginPanel.add(passwordField);
+            loginPanel.add(loginButton);
+            frame.add(loginPanel, BorderLayout.NORTH);
+
+            JPanel inputPanel = new JPanel();
+            inputPanel.add(messageField);
+            inputPanel.add(sendButton);
+            frame.add(inputPanel, BorderLayout.SOUTH);
+
+            frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+            frame.pack();
+            frame.setVisible(true);
+
+            sendButton.setEnabled(false);
+
+            loginButton.addActionListener(e -> {
+                String username = usernameField.getText();
+                String password = new String(passwordField.getPassword());
+                chatClient.sendLoginCredentials(username, password);
+            });
+
+            sendButton.addActionListener(e -> sendMessage());
+            messageField.addActionListener(e -> sendMessage());
+        }
+
+        private void sendMessage() {
+            String message = messageField.getText();
+            if (!message.isEmpty()) {
+                chatClient.sendMessage(message);
+                messageField.setText("");
+            }
+        }
+
+        public void restartLogin() {
+            usernameField.setText("");
+            passwordField.setText("");
+            chatArea.setText("");
+        }
+
+        public void displayMessage(String message) {
+            chatArea.append(message + "\n");
+        }
+
+        public void receiveMessage(String message) {
+            displayMessage(message);
+        }
+    }
+
     public static void main(String[] args) {
         String serverAddress = "localhost";
         int port = 12345;
-        ChatInterface chatInterface = new ChatInterface();
-
-        chatInterface.connect(serverAddress, port);
+        ChatClient chatClient = new ChatClient(serverAddress, port);
+        ChatInterface chatInterface = new ChatInterface(chatClient);
     }
 }
