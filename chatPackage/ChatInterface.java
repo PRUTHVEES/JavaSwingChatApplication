@@ -76,7 +76,12 @@ public class ChatInterface {
         String username = JOptionPane.showInputDialog("Enter your username:");
         String password = JOptionPane.showInputDialog("Enter your password:");
 
-        // Initialize ChatClient after getting the username and password
+        // Initialize ChatClient and ChatInterface
         ChatClient chatClient = new ChatClient(serverAddress, port, username, password);
+        ChatInterface chatInterface = new ChatInterface(chatClient);
+        
+        // Link chat interface back to client
+        chatClient.setChatInterface(chatInterface);
     }
 }
+

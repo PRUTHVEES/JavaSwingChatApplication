@@ -1,15 +1,13 @@
 import java.io.*;
 import java.net.*;
+import java.sql.*;
 import java.util.*;
 
 public class ChatServer {
     private static final int PORT = 12345; // Define the port
     private static Set<PrintWriter> clientWriters = new HashSet<>();
-    private static Map<String, String> userCredentials = new HashMap<>(); // To store usernames and passwords
 
     public static void main(String[] args) {
-        loadUserCredentials(); // Load predefined credentials
-
         System.out.println("Chat Server started...");
         try (ServerSocket serverSocket = new ServerSocket(PORT)) {
             while (true) {
@@ -18,12 +16,6 @@ public class ChatServer {
         } catch (IOException e) {
             e.printStackTrace();
         }
-    }
-
-    private static void loadUserCredentials() {
-        // Predefined usernames and passwords (this could also come from a database)
-        userCredentials.put("user1", "pass1");
-        userCredentials.put("user2", "pass2");
     }
 
     private static class ClientHandler extends Thread {
@@ -53,7 +45,7 @@ public class ChatServer {
                             String usernameAttempt = parts[1];
                             String passwordAttempt = parts[2];
 
-                            // Check credentials
+                            // Check credentials from the database
                             if (checkCredentials(usernameAttempt, passwordAttempt)) {
                                 username = usernameAttempt; // Set username on successful login
                                 out.println("Welcome " + username + "!"); // Send welcome message
@@ -91,7 +83,26 @@ public class ChatServer {
         }
 
         private boolean checkCredentials(String username, String password) {
-            return password.equals(userCredentials.get(username)); // Check the stored credentials
+            // Database connection settings
+            String url = "jdbc:mysql://localhost:3306/chat_db"; // Replace with your DB URL and name
+            String dbUser = "root"; // Replace with your DB username
+            String dbPassword = ""; // Replace with your DB password
+
+            String query = "SELECT password FROM users WHERE username = ?";
+            try (Connection conn = DriverManager.getConnection(url, dbUser, dbPassword);
+                 PreparedStatement stmt = conn.prepareStatement(query)) {
+
+                stmt.setString(1, username);
+                try (ResultSet rs = stmt.executeQuery()) {
+                    if (rs.next()) {
+                        String storedPassword = rs.getString("password");
+                        return password.equals(storedPassword); // Check if the password matches
+                    }
+                }
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+            return false; // Return false if credentials are invalid
         }
 
         private void broadcast(String message) {

@@ -16,6 +16,11 @@ public class ChatClient {
         connectToServer(serverAddress, port); // Try to connect on initialization
     }
 
+    // Method to set chat interface after initialization
+    public void setChatInterface(ChatInterface chatInterface) {
+        this.chatInterface = chatInterface;
+    }
+
     // Method to connect to the server
     private void connectToServer(String serverAddress, int port) {
         new Thread(() -> {
@@ -29,13 +34,17 @@ public class ChatClient {
                     out.println("LOGIN:" + username + ":" + password); // Format: LOGIN:username:password
 
                     // Clear chat area once connected
-                    chatInterface.clearChatArea();
+                    if (chatInterface != null) {
+                        chatInterface.clearChatArea();
+                    }
 
                     // Start a thread to listen for incoming messages from the server
                     new Thread(new IncomingMessageHandler()).start();
                     break; // Exit loop on successful connection
                 } catch (IOException e) {
-                    chatInterface.displayMessage("Error: Unable to connect to the server. Retrying in 5 seconds...");
+                    if (chatInterface != null) {
+                        chatInterface.displayMessage("Error: Unable to connect to the server. Retrying in 5 seconds...");
+                    }
                     try {
                         Thread.sleep(5000); // Wait before retrying
                     } catch (InterruptedException interruptedException) {
@@ -58,7 +67,9 @@ public class ChatClient {
             try {
                 String message;
                 while ((message = in.readLine()) != null) {
-                    chatInterface.receiveMessage(message); // Update the chat area in the UI
+                    if (chatInterface != null) {
+                        chatInterface.receiveMessage(message); // Update the chat area in the UI
+                    }
                 }
             } catch (IOException e) {
                 e.printStackTrace();
