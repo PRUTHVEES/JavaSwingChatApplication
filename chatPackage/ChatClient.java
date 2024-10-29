@@ -6,22 +6,19 @@ public class ChatClient {
     private BufferedReader in;
     private PrintWriter out;
     private ChatInterface chatInterface;
-    private String username; // Field to store the username
-    private String password; // Field to store the password
+    private String username;
+    private String password;
 
     public ChatClient(String serverAddress, int port, String username, String password) {
-        this.username = username; // Set the username
-        this.password = password; // Set the password
-
-        connectToServer(serverAddress, port); // Try to connect on initialization
+        this.username = username;
+        this.password = password;
+        connectToServer(serverAddress, port);
     }
 
-    // Method to set chat interface after initialization
     public void setChatInterface(ChatInterface chatInterface) {
         this.chatInterface = chatInterface;
     }
 
-    // Method to connect to the server
     private void connectToServer(String serverAddress, int port) {
         new Thread(() -> {
             while (true) {
@@ -30,23 +27,24 @@ public class ChatClient {
                     in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
                     out = new PrintWriter(socket.getOutputStream(), true);
 
-                    // Send username and password to the server
-                    out.println("LOGIN:" + username + ":" + password); // Format: LOGIN:username:password
+                    // Send login credentials
+                    out.println("LOGIN:" + username + ":" + password);
 
-                    // Clear chat area once connected
+                    // Clear chat area on successful connection
                     if (chatInterface != null) {
                         chatInterface.clearChatArea();
                     }
 
-                    // Start a thread to listen for incoming messages from the server
+                    // Start thread to handle incoming messages
                     new Thread(new IncomingMessageHandler()).start();
-                    break; // Exit loop on successful connection
+                    break;
                 } catch (IOException e) {
+                    // Restart ChatInterface with an error message
                     if (chatInterface != null) {
-                        chatInterface.displayMessage("Error: Unable to connect to the server. Retrying in 5 seconds...");
+                        chatInterface.restartWithError("Error: Unable to connect to server. Retrying...");
                     }
                     try {
-                        Thread.sleep(5000); // Wait before retrying
+                        Thread.sleep(5000);
                     } catch (InterruptedException interruptedException) {
                         Thread.currentThread().interrupt();
                     }
@@ -55,12 +53,12 @@ public class ChatClient {
         }).start();
     }
 
-    // Method to send messages to the server
     public void sendMessage(String message) {
-        out.println(message); // Send message to the server
+        if (out != null) {
+            out.println(message);
+        }
     }
 
-    // Handle incoming messages from the server
     public class IncomingMessageHandler implements Runnable {
         @Override
         public void run() {
@@ -68,12 +66,19 @@ public class ChatClient {
                 String message;
                 while ((message = in.readLine()) != null) {
                     if (chatInterface != null) {
-                        chatInterface.receiveMessage(message); // Update the chat area in the UI
+                        chatInterface.receiveMessage(message);
                     }
                 }
             } catch (IOException e) {
-                e.printStackTrace();
+                if (chatInterface != null) {
+                    chatInterface.restartWithError("Disconnected from server. Please try reconnecting.");
+                }
             }
         }
+    }
+
+    // Main method to start the chat client application
+    public static void main(String[] args) {
+        ChatInterface chatInterface = new ChatInterface();
     }
 }
