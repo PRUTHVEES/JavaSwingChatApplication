@@ -17,7 +17,6 @@ public class ChatInterface {
         initializeLoginUI();
     }
 
-    // Initialize the login UI
     private void initializeLoginUI() {
         frame = new JFrame("Chat Login");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -40,14 +39,12 @@ public class ChatInterface {
         frame.pack();
         frame.setVisible(true);
 
-        // Handle connect button press
         connectButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
                 String username = usernameField.getText();
                 String password = new String(passwordField.getPassword());
 
-                // Close login UI and start the chat UI if credentials are provided
                 if (!username.isEmpty() && !password.isEmpty()) {
                     frame.dispose();
                     startChat(username, password);
@@ -58,11 +55,8 @@ public class ChatInterface {
         });
     }
 
-    // Start chat UI after successful login
     private void startChat(String username, String password) {
-        chatClient = new ChatClient("localhost", 12345, username, password);
-        chatClient.setChatInterface(this);
-
+        chatClient = new ChatClient("localhost", 12345, username, password, this);
         frame = new JFrame("Chat Client");
         chatArea = new JTextArea(20, 50);
         messageField = new JTextField(40);
@@ -116,9 +110,29 @@ public class ChatInterface {
         displayMessage(message);
     }
 
-    // Restart interface with an error message
+    // Reset login fields for new attempt
+    public void resetLoginFields() {
+        usernameField.setText("");
+        passwordField.setText("");
+        frame.setVisible(true);
+    }
+
     public void restartWithError(String errorMessage) {
         frame.dispose();
-        new ChatInterface().displayMessage(errorMessage);
+        ChatInterface newInterface = new ChatInterface();
+        newInterface.displayMessage(errorMessage);
+    }
+
+
+    public void connect(String serverAddress, int port) {
+        String username = usernameField.getText();
+        String password = new String(passwordField.getPassword());
+        if (!username.isEmpty() && !password.isEmpty()) {
+            frame.dispose();
+            chatClient = new ChatClient(serverAddress, port, username, password, this);
+
+        } else {
+            JOptionPane.showMessageDialog(frame, "Please enter both username and password.");
+        }
     }
 }

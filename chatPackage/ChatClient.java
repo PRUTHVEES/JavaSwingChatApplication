@@ -8,15 +8,14 @@ public class ChatClient {
     private ChatInterface chatInterface;
     private String username;
     private String password;
+    private int loginAttempts;
 
-    public ChatClient(String serverAddress, int port, String username, String password) {
+    public ChatClient(String serverAddress, int port, String username, String password, ChatInterface chatInterface) {
         this.username = username;
         this.password = password;
-        connectToServer(serverAddress, port);
-    }
-
-    public void setChatInterface(ChatInterface chatInterface) {
         this.chatInterface = chatInterface;
+        this.loginAttempts = 0;
+        connectToServer(serverAddress, port);
     }
 
     private void connectToServer(String serverAddress, int port) {
@@ -39,7 +38,6 @@ public class ChatClient {
                     new Thread(new IncomingMessageHandler()).start();
                     break;
                 } catch (IOException e) {
-                    // Restart ChatInterface with an error message
                     if (chatInterface != null) {
                         chatInterface.restartWithError("Error: Unable to connect to server. Retrying...");
                     }
@@ -66,7 +64,19 @@ public class ChatClient {
                 String message;
                 while ((message = in.readLine()) != null) {
                     if (chatInterface != null) {
-                        chatInterface.receiveMessage(message);
+                        // Check for invalid login message
+                        if (message.equals("ERROR: Invalid username or password. Please try again.")) {
+                            loginAttempts++;
+                            if (loginAttempts >= 3) {
+                                chatInterface.displayMessage("Maximum login attempts reached. Exiting.");
+                                System.exit(0); // Exit application after max attempts
+                            } else {
+                                chatInterface.displayMessage("Invalid login. Please try again. Attempts remaining: " + (3 - loginAttempts));
+                                chatInterface.resetLoginFields(); // Clear username and password fields
+                            }
+                        } else {
+                            chatInterface.receiveMessage(message);
+                        }
                     }
                 }
             } catch (IOException e) {
@@ -77,8 +87,12 @@ public class ChatClient {
         }
     }
 
-    // Main method to start the chat client application
+    // Main method to run the ChatClient application
     public static void main(String[] args) {
+        String serverAddress = "localhost";
+        int port = 12345;
         ChatInterface chatInterface = new ChatInterface();
+
+        chatInterface.connect(serverAddress, port);
     }
 }
