@@ -1,7 +1,5 @@
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.io.*;
 import java.net.*;
 
@@ -12,8 +10,10 @@ public class ChatClient {
     private String username;
     private String password;
     private int loginAttempts = 3;
+    private ChatInterface chatInterface;
 
-    public ChatClient(String serverAddress, int port) {
+    public ChatClient(String serverAddress, int port, ChatInterface chatInterface) {
+        this.chatInterface = chatInterface;
         connectToServer(serverAddress, port);
     }
 
@@ -48,7 +48,7 @@ public class ChatClient {
             try {
                 String message;
                 while ((message = in.readLine()) != null) {
-                    System.out.println("Received: " + message);
+                    chatInterface.displayMessage("Received: " + message); // Display in chat area
                 }
             } catch (IOException e) {
                 e.printStackTrace();
@@ -66,9 +66,12 @@ public class ChatClient {
         private JButton loginButton;
         private ChatClient chatClient;
 
-        public ChatInterface(ChatClient chatClient) {
-            this.chatClient = chatClient;
+        public ChatInterface() {
             initializeUI();
+        }
+
+        public void setChatClient(ChatClient chatClient) {
+            this.chatClient = chatClient;
         }
 
         private void initializeUI() {
@@ -140,7 +143,11 @@ public class ChatClient {
     public static void main(String[] args) {
         String serverAddress = "localhost";
         int port = 12345;
-        ChatClient chatClient = new ChatClient(serverAddress, port);
-        ChatInterface chatInterface = new ChatInterface(chatClient);
+
+        ChatInterface chatInterface = new ChatInterface();
+        ChatClient chatClient = new ChatClient(serverAddress, port, chatInterface);
+
+        // Set the ChatClient in ChatInterface
+        chatInterface.setChatClient(chatClient);
     }
 }
