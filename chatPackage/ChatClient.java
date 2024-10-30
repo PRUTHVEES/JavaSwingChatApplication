@@ -17,20 +17,34 @@ public class ChatClient {
         connectToServer(serverAddress, port);
     }
 
-    private void connectToServer(String serverAddress, int port) {
-        new Thread(() -> {
+private void connectToServer(String serverAddress, int port) {
+    new Thread(() -> {
+        while (true) {
             try {
                 socket = new Socket(serverAddress, port);
                 in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
                 out = new PrintWriter(socket.getOutputStream(), true);
-
+                
                 // Start a thread to listen for incoming messages
                 new Thread(new IncomingMessageHandler()).start();
+                
+                chatInterface.displayMessage("Connected to the server.");
+                break; // Exit loop once connected
+
             } catch (IOException e) {
-                System.err.println("Error: Unable to connect to the server.");
+                chatInterface.displayMessage("Error: Unable to connect to the server. Retrying...");
+                
+                // Wait for a few seconds before retrying to prevent rapid reconnection attempts
+                try {
+                    Thread.sleep(3000); // 3-second delay
+                } catch (InterruptedException interruptedException) {
+                    interruptedException.printStackTrace();
+                }
             }
-        }).start();
-    }
+        }
+    }).start();
+}
+
 
     public void sendLoginCredentials(String username, String password) {
         this.username = username;
@@ -70,6 +84,11 @@ public class ChatClient {
             initializeUI();
         }
 
+        // Method to clear the chat area
+        public void clearChatArea() {
+            chatArea.setText(""); // Clears all text in the chat area
+        }
+        
         public void setChatClient(ChatClient chatClient) {
             this.chatClient = chatClient;
         }
