@@ -51,15 +51,7 @@ public class ChatClient {
         this.username = username;
         this.password = password;
         
-        if(username == "") {
-            chatInterface.displayMessage("Enter Username");
-        } else if(password == "") {
-            chatInterface.displayMessage("Enter Password");
-        } else if(username == "" && password == "") {
-            chatInterface.displayMessage("Enter Username and Password");
-        } else {
-            out.println("LOGIN:" + username + ":" + password);
-        }
+        out.println("LOGIN:" + username + ":" + password);
     }
 
     public void sendMessage(String message) {
@@ -72,7 +64,7 @@ public class ChatClient {
             try {
                 String message;
                 while ((message = in.readLine()) != null) {
-                    chatInterface.displayMessage("Received: " + message); // Display in chat area
+                    //chatInterface.displayMessage("Received: " + message); // Display in chat area
 
                     // Handle login success and error messages
                     if (message.startsWith("Welcome")) {
@@ -89,7 +81,7 @@ public class ChatClient {
                         }
                     } else {
                         // Display regular chat messages
-                        chatInterface.displayMessage("Received: " + message);
+                        chatInterface.displayMessage(message);
                     }
                 }
             } catch (IOException e) {

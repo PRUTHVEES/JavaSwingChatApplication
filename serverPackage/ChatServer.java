@@ -62,6 +62,7 @@ public class ChatServer {
                 String message;
                 while ((message = in.readLine()) != null) {
                     if (username != null) {
+                        saveMessageToDatabase(username, message);
                         broadcast(username + ": " + message); // Broadcast message with username
                     }
                 }
@@ -103,6 +104,25 @@ public class ChatServer {
                 e.printStackTrace();
             }
             return false; // Return false if credentials are invalid
+        }
+
+        // Save the message to the database
+        private void saveMessageToDatabase(String username, String message) {
+            String url = "jdbc:mysql://localhost:3306/chat_db"; // Replace with your DB URL and name
+            String dbUser = "root"; // Replace with your DB username
+            String dbPassword = ""; // Replace with your DB password
+
+            String query = "INSERT INTO chats (user_id, message_content, timestamp) VALUES (?, ?, NOW())";
+            try (Connection conn = DriverManager.getConnection(url, dbUser, dbPassword);
+                 PreparedStatement stmt = conn.prepareStatement(query)) {
+
+                stmt.setString(1, username);
+                stmt.setString(2, message);
+                stmt.executeUpdate(); // Execute the insert query
+
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
         }
 
         private void broadcast(String message) {
