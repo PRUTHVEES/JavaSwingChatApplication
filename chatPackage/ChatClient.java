@@ -9,7 +9,7 @@ public class ChatClient {
     private PrintWriter out;
     private String username;
     private String password;
-    private int loginAttempts = 3;
+    private int loginAttempts = 5;
     private ChatInterface chatInterface;
 
     public ChatClient(String serverAddress, int port, ChatInterface chatInterface) {
@@ -17,39 +17,49 @@ public class ChatClient {
         connectToServer(serverAddress, port);
     }
 
-private void connectToServer(String serverAddress, int port) {
-    new Thread(() -> {
-        while (true) {
-            try {
-                socket = new Socket(serverAddress, port);
-                in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-                out = new PrintWriter(socket.getOutputStream(), true);
-                
-                // Start a thread to listen for incoming messages
-                new Thread(new IncomingMessageHandler()).start();
-                
-                chatInterface.displayMessage("Connected to the server.");
-                break; // Exit loop once connected
-
-            } catch (IOException e) {
-                chatInterface.displayMessage("Error: Unable to connect to the server. Retrying...");
-                
-                // Wait for a few seconds before retrying to prevent rapid reconnection attempts
+    private void connectToServer(String serverAddress, int port) {
+        new Thread(() -> {
+            while (true) {
+                chatInterface.disableLogin();
                 try {
-                    Thread.sleep(3000); // 3-second delay
-                } catch (InterruptedException interruptedException) {
-                    interruptedException.printStackTrace();
+                    socket = new Socket(serverAddress, port);
+                    in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+                    out = new PrintWriter(socket.getOutputStream(), true);
+
+                    // Start a thread to listen for incoming messages
+                    new Thread(new IncomingMessageHandler()).start();
+
+                    chatInterface.displayMessage("Connected to the server.");
+                    chatInterface.enableLogin();
+                    break; // Exit loop once connected
+
+                } catch (IOException e) {
+                    chatInterface.displayMessage("Error: Unable to connect to the server. Retrying...");
+                    
+                    // Wait for a few seconds before retrying
+                    try {
+                        Thread.sleep(3000); // 3-second delay
+                    } catch (InterruptedException interruptedException) {
+                        interruptedException.printStackTrace();
+                    }
                 }
             }
-        }
-    }).start();
-}
-
+        }).start();
+    }
 
     public void sendLoginCredentials(String username, String password) {
         this.username = username;
         this.password = password;
-        out.println("LOGIN:" + username + ":" + password);
+        
+        if(username == "") {
+            chatInterface.displayMessage("Enter Username");
+        } else if(password == "") {
+            chatInterface.displayMessage("Enter Password");
+        } else if(username == "" && password == "") {
+            chatInterface.displayMessage("Enter Username and Password");
+        } else {
+            out.println("LOGIN:" + username + ":" + password);
+        }
     }
 
     public void sendMessage(String message) {
@@ -63,6 +73,24 @@ private void connectToServer(String serverAddress, int port) {
                 String message;
                 while ((message = in.readLine()) != null) {
                     chatInterface.displayMessage("Received: " + message); // Display in chat area
+
+                    // Handle login success and error messages
+                    if (message.startsWith("Welcome")) {
+                        chatInterface.displayMessage("Login successful! You can start chatting.");
+                        chatInterface.enableChat();  // Enable chat area on successful login
+                    } else if (message.equals("ERROR: Invalid username or password. Please try again.")) {
+                        loginAttempts--;
+                        chatInterface.displayMessage("Invalid login. Attempts remaining: " + loginAttempts);
+                        if (loginAttempts > 0) {
+                            chatInterface.clearLoginFields();  // Clear login fields on failed login
+                        } else {
+                            chatInterface.disableLogin();
+                            chatInterface.displayMessage("Maximum login attempts reached. Please restart the application.");
+                        }
+                    } else {
+                        // Display regular chat messages
+                        chatInterface.displayMessage("Received: " + message);
+                    }
                 }
             } catch (IOException e) {
                 e.printStackTrace();
@@ -144,18 +172,32 @@ private void connectToServer(String serverAddress, int port) {
             }
         }
 
-        public void restartLogin() {
+        public void clearLoginFields() {
             usernameField.setText("");
             passwordField.setText("");
-            chatArea.setText("");
+        }
+
+        public void disableLogin() {
+            loginButton.setEnabled(false);
+            usernameField.setEditable(false);
+            passwordField.setEditable(false);
+        }
+
+        public void enableLogin() {
+            loginButton.setEnabled(true);
+            usernameField.setEditable(true);
+            passwordField.setEditable(true);
+        }
+        
+        public void enableChat() {
+            sendButton.setEnabled(true); // Enable send button after successful login
+            loginButton.setEnabled(false); // Disable login button after successful login
+            usernameField.setEditable(false);
+            passwordField.setEditable(false);
         }
 
         public void displayMessage(String message) {
-            chatArea.append(message + "\n");
-        }
-
-        public void receiveMessage(String message) {
-            displayMessage(message);
+            chatArea.append(message+"\n\n");
         }
     }
 
