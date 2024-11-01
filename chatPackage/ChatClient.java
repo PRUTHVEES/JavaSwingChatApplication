@@ -85,8 +85,13 @@ private class IncomingMessageHandler implements Runnable {
                         chatInterface.displayMessage("Maximum login attempts reached. Please restart the application.");
                     }
                 } else {
-                    // Display regular chat messages
-                    chatInterface.displayMessage(message);
+                    if (message.startsWith(username + ":")) { // username is client's own username
+                        String selfMessage = "You: " + message.substring(username.length() + 2); // Add "You:" prefix
+                        chatInterface.displayMessage(selfMessage);
+                    } else {
+                        // Display regular incoming message
+                        chatInterface.displayMessage(message);
+                    }
                 }
             }
         } catch (IOException e) {
@@ -195,7 +200,7 @@ private class IncomingMessageHandler implements Runnable {
         }
 
         public void displayMessage(String message) {
-            chatArea.append(message+"\n\n");
+            chatArea.append(message+"\n");
         }
     }
 
