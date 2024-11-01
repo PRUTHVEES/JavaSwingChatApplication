@@ -11,7 +11,7 @@ public class ChatClient {
     private String password;
     private int loginAttempts = 5;
     private ChatInterface chatInterface;
-    private int userId;
+    private int userId = -1;
     
     public ChatClient(String serverAddress, int port, ChatInterface chatInterface) {
         this.chatInterface = chatInterface;
@@ -30,6 +30,7 @@ public class ChatClient {
                     // Start a thread to listen for incoming messages
                     new Thread(new IncomingMessageHandler()).start();
 
+                    
                     chatInterface.displayMessage("Connected to the server.");
                     chatInterface.enableLogin();
                     break; // Exit loop once connected
@@ -57,8 +58,14 @@ public class ChatClient {
     }
 
     public void sendMessage(String message) {
-        out.println(message);
+        if (userId != -1) { // Ensure userId is set
+            String formattedMessage = "MESSAGE:" + userId + ":null:" + message;
+            out.println(formattedMessage); // Send message with userId and null for chatRoomId
+        } else {
+            System.out.println("Error: User ID not set. Login is required.");
+        }
     }
+
 
 private class IncomingMessageHandler implements Runnable {
     @Override
@@ -73,6 +80,7 @@ private class IncomingMessageHandler implements Runnable {
                         chatInterface.enableChat();  // Enable chat area on successful login
                     } else if (message.startsWith("USER_ID:")) {
                         String userIdStr = message.split(":")[1]; // Extract and store user ID
+                        
                         // Store user ID in a variable, e.g., this.userId = userId;
                         userId = Integer.parseInt(userIdStr);
                     } else if (message.equals("ERROR: Invalid username or password. Please try again.")) {
@@ -101,108 +109,130 @@ private class IncomingMessageHandler implements Runnable {
 }
 
 
-    public static class ChatInterface {
-        private JFrame frame;
-        private JTextArea chatArea;
-        private JTextField messageField;
-        private JTextField usernameField;
-        private JPasswordField passwordField;
-        private JButton sendButton;
-        private JButton loginButton;
-        private ChatClient chatClient;
+public static class ChatInterface {
+    private JFrame frame;
+    private JTextArea chatArea;
+    private JTextField messageField;
+    private JTextField usernameField;
+    private JPasswordField passwordField;
+    private JButton sendButton;
+    private JButton loginButton;
+    private JPanel userPanel;  // New user panel for displaying user info
+    private ChatClient chatClient;
 
-        public ChatInterface() {
-            initializeUI();
-        }
+    public ChatInterface() {
+        initializeUI();
+    }
 
-        // Method to clear the chat area
-        public void clearChatArea() {
-            chatArea.setText(""); // Clears all text in the chat area
-        }
-        
-        public void setChatClient(ChatClient chatClient) {
-            this.chatClient = chatClient;
-        }
+    // Method to clear the chat area
+    public void clearChatArea() {
+        chatArea.setText(""); // Clears all text in the chat area
+    }
+    
+    public void setChatClient(ChatClient chatClient) {
+        this.chatClient = chatClient;
+    }
 
-        private void initializeUI() {
-            frame = new JFrame("Chat Client");
-            chatArea = new JTextArea(20, 50);
-            messageField = new JTextField(40);
-            usernameField = new JTextField(15);
-            passwordField = new JPasswordField(15);
-            sendButton = new JButton("Send");
-            loginButton = new JButton("Login");
+    private void initializeUI() {
+        frame = new JFrame("Chat Client");
+        chatArea = new JTextArea(20, 50);
+        messageField = new JTextField(40);
+        usernameField = new JTextField(15);
+        passwordField = new JPasswordField(15);
+        sendButton = new JButton("Send");
+        loginButton = new JButton("Login");
+        userPanel = new JPanel(); // Initialize user panel
 
-            chatArea.setEditable(false);
-            JScrollPane scrollPane = new JScrollPane(chatArea);
-            frame.setLayout(new BorderLayout());
-            frame.add(scrollPane, BorderLayout.CENTER);
+        chatArea.setEditable(false);
+        JScrollPane scrollPane = new JScrollPane(chatArea);
+        userPanel.setLayout(new BorderLayout());
+        userPanel.setPreferredSize(new Dimension(150, 0)); // Set preferred width
 
-            JPanel loginPanel = new JPanel();
-            loginPanel.add(new JLabel("Username:"));
-            loginPanel.add(usernameField);
-            loginPanel.add(new JLabel("Password:"));
-            loginPanel.add(passwordField);
-            loginPanel.add(loginButton);
-            frame.add(loginPanel, BorderLayout.NORTH);
+        // Add components to user panel
+        userPanel.add(new JLabel("Online Users"), BorderLayout.NORTH);
+        JTextArea usersArea = new JTextArea();
+        usersArea.setEditable(false);
+        userPanel.add(new JScrollPane(usersArea), BorderLayout.CENTER);
 
-            JPanel inputPanel = new JPanel();
-            inputPanel.add(messageField);
-            inputPanel.add(sendButton);
-            frame.add(inputPanel, BorderLayout.SOUTH);
+        JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, scrollPane, userPanel);
+        splitPane.setDividerLocation(500); // Initial divider position
+        splitPane.setResizeWeight(0.8); // Adjust resize behavior
 
-            frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-            frame.pack();
-            frame.setVisible(true);
+        frame.setLayout(new BorderLayout());
+        frame.add(splitPane, BorderLayout.CENTER);
 
-            sendButton.setEnabled(false);
+        JPanel loginPanel = new JPanel();
+        loginPanel.add(new JLabel("Username:"));
+        loginPanel.add(usernameField);
+        loginPanel.add(new JLabel("Password:"));
+        loginPanel.add(passwordField);
+        loginPanel.add(loginButton);
+        frame.add(loginPanel, BorderLayout.NORTH);
 
-            loginButton.addActionListener(e -> {
-                String username = usernameField.getText();
-                String password = new String(passwordField.getPassword());
-                chatClient.sendLoginCredentials(username, password);
-            });
+        JPanel inputPanel = new JPanel();
+        inputPanel.add(messageField);
+        inputPanel.add(sendButton);
+        frame.add(inputPanel, BorderLayout.SOUTH);
 
-            sendButton.addActionListener(e -> sendMessage());
-            messageField.addActionListener(e -> sendMessage());
-        }
+        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        frame.pack();
+        frame.setVisible(true);
 
-        private void sendMessage() {
-            String message = messageField.getText();
-            if (!message.isEmpty()) {
-                chatClient.sendMessage(message);
-                messageField.setText("");
-            }
-        }
+        sendButton.setEnabled(false);
 
-        public void clearLoginFields() {
-            usernameField.setText("");
-            passwordField.setText("");
-        }
+        loginButton.addActionListener(e -> {
+            String username = usernameField.getText();
+            String password = new String(passwordField.getPassword());
+            chatClient.sendLoginCredentials(username, password);
+        });
 
-        public void disableLogin() {
-            loginButton.setEnabled(false);
-            usernameField.setEditable(false);
-            passwordField.setEditable(false);
-        }
+        sendButton.addActionListener(e -> sendMessage());
+        messageField.addActionListener(e -> sendMessage());
+    }
 
-        public void enableLogin() {
-            loginButton.setEnabled(true);
-            usernameField.setEditable(true);
-            passwordField.setEditable(true);
-        }
-        
-        public void enableChat() {
-            sendButton.setEnabled(true); // Enable send button after successful login
-            loginButton.setEnabled(false); // Disable login button after successful login
-            usernameField.setEditable(false);
-            passwordField.setEditable(false);
-        }
-
-        public void displayMessage(String message) {
-            chatArea.append(message+"\n");
+    private void sendMessage() {
+        String message = messageField.getText();
+        if (!message.isEmpty()) {
+            chatClient.sendMessage(message);
+            messageField.setText("");
         }
     }
+
+    public void clearLoginFields() {
+        usernameField.setText("");
+        passwordField.setText("");
+    }
+
+    public void disableLogin() {
+        loginButton.setEnabled(false);
+        usernameField.setEditable(false);
+        passwordField.setEditable(false);
+    }
+
+    public void enableLogin() {
+        loginButton.setEnabled(true);
+        usernameField.setEditable(true);
+        passwordField.setEditable(true);
+    }
+    
+    public void enableChat() {
+        sendButton.setEnabled(true); // Enable send button after successful login
+        loginButton.setEnabled(false); // Disable login button after successful login
+        usernameField.setEditable(false);
+        passwordField.setEditable(false);
+    }
+
+    public void displayMessage(String message) {
+        chatArea.append(message + "\n");
+    }
+
+    // Method to update the user panel with online users
+    public void updateUserList(String[] users) {
+        JTextArea usersArea = (JTextArea) ((JScrollPane) userPanel.getComponent(1)).getViewport().getView();
+        usersArea.setText(String.join("\n", users));
+    }
+}
+
 
     public static void main(String[] args) {
         String serverAddress = "localhost";
