@@ -11,7 +11,8 @@ public class ChatClient {
     private String password;
     private int loginAttempts = 5;
     private ChatInterface chatInterface;
-
+    private int userId;
+    
     public ChatClient(String serverAddress, int port, ChatInterface chatInterface) {
         this.chatInterface = chatInterface;
         connectToServer(serverAddress, port);
@@ -50,45 +51,50 @@ public class ChatClient {
     public void sendLoginCredentials(String username, String password) {
         this.username = username;
         this.password = password;
-        
+
         out.println("LOGIN:" + username + ":" + password);
+        
     }
 
     public void sendMessage(String message) {
         out.println(message);
     }
 
-    private class IncomingMessageHandler implements Runnable {
-        @Override
-        public void run() {
-            try {
-                String message;
-                while ((message = in.readLine()) != null) {
-                    //chatInterface.displayMessage("Received: " + message); // Display in chat area
-
-                    // Handle login success and error messages
+private class IncomingMessageHandler implements Runnable {
+    @Override
+    public void run() {
+        try {
+            String message;
+            while ((message = in.readLine()) != null) {
+                
+                // Handle login success message
                     if (message.startsWith("Welcome")) {
                         chatInterface.displayMessage("Login successful! You can start chatting.");
                         chatInterface.enableChat();  // Enable chat area on successful login
+                    } else if (message.startsWith("USER_ID:")) {
+                        String userIdStr = message.split(":")[1]; // Extract and store user ID
+                        // Store user ID in a variable, e.g., this.userId = userId;
+                        userId = Integer.parseInt(userIdStr);
                     } else if (message.equals("ERROR: Invalid username or password. Please try again.")) {
-                        loginAttempts--;
-                        chatInterface.displayMessage("Invalid login. Attempts remaining: " + loginAttempts);
-                        if (loginAttempts > 0) {
-                            chatInterface.clearLoginFields();  // Clear login fields on failed login
-                        } else {
-                            chatInterface.disableLogin();
-                            chatInterface.displayMessage("Maximum login attempts reached. Please restart the application.");
-                        }
+                    loginAttempts--;
+                    chatInterface.displayMessage("Invalid login. Attempts remaining: " + loginAttempts);
+                    if (loginAttempts > 0) {
+                        chatInterface.clearLoginFields();  // Clear login fields on failed login
                     } else {
-                        // Display regular chat messages
-                        chatInterface.displayMessage(message);
+                        chatInterface.disableLogin();
+                        chatInterface.displayMessage("Maximum login attempts reached. Please restart the application.");
                     }
+                } else {
+                    // Display regular chat messages
+                    chatInterface.displayMessage(message);
                 }
-            } catch (IOException e) {
-                e.printStackTrace();
             }
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
+}
+
 
     public static class ChatInterface {
         private JFrame frame;

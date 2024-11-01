@@ -49,6 +49,7 @@ public class ChatServer {
                             if (checkCredentials(usernameAttempt, passwordAttempt)) {
                                 username = usernameAttempt; // Set username on successful login
                                 out.println("Welcome " + username + "!"); // Send welcome message
+                                out.println("User ID: " + getUserId(usernameAttempt));
                                 broadcast(username + " has joined the chat."); // Notify others
                                 break; // Exit loop to start handling messages
                             } else {
@@ -83,6 +84,28 @@ public class ChatServer {
             }
         }
 
+        private int getUserId(String username) {
+                // Database connection settings
+                String url = "jdbc:mysql://localhost:3306/chat_db"; // Replace with your DB URL and name
+                String dbUser = "root"; // Replace with your DB username
+            String dbPassword = ""; // Replace with your DB password
+            
+                String query = "SELECT user_id FROM users WHERE username = ?";
+                try (Connection conn = DriverManager.getConnection(url, dbUser, dbPassword);
+                PreparedStatement stmt = conn.prepareStatement(query)) {
+
+                stmt.setString(1, username);
+                try (ResultSet rs = stmt.executeQuery()) {
+                    if (rs.next()) {
+                            return rs.getInt("user_id"); // Retrieve and return user_id
+                        }
+                    }
+                } catch (SQLException e) {
+                e.printStackTrace();
+        }
+            return -1; // Return -1 or handle if user_id not found
+        }
+        
         private boolean checkCredentials(String username, String password) {
             // Database connection settings
             String url = "jdbc:mysql://localhost:3306/chat_db"; // Replace with your DB URL and name
