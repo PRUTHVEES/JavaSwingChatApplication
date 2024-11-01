@@ -51,6 +51,7 @@ public class ChatServer {
                             int userId = getUserId(usernameAttempt);
                             out.println("Welcome " + username + "!"); // Send welcome message
                             out.println("USER_ID:" + userId);
+                            sendMessagesToClient(out, userId); // Send messages to the client
                             
                             broadcast(username + " has joined the chat."); // Notify others
                             break; // Exit loop to start handling messages
@@ -149,7 +150,46 @@ public class ChatServer {
             return false; // Return false if credentials are invalid
         }
 
-        // Save the message to the database with user_id and chat_room_id
+        private List<String> retrieveMessages(int userId) {
+        // Database connection settings
+        String url = "jdbc:mysql://localhost:3306/chat_db"; // Replace with your DB URL and name
+        String dbUser = "root"; // Replace with your DB username
+        String dbPassword = ""; // Replace with your DB password
+
+        // Query to retrieve messages for the given userId
+        String query = "SELECT message_content FROM chats WHERE user_id = ?";
+        List<String> messages = new ArrayList<>();
+
+        try (Connection conn = DriverManager.getConnection(url, dbUser, dbPassword);
+             PreparedStatement stmt = conn.prepareStatement(query)) {
+
+            stmt.setInt(1, userId);
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    String messageContent = rs.getString("message_content");
+                    messages.add(messageContent); // Collecting messages
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return messages; // Return the list of messages
+    }
+
+    // Method to send messages to the client
+    private void sendMessagesToClient(PrintWriter out, int userId) {
+        List<String> messages = retrieveMessages(userId); // Retrieve messages for the user
+        StringBuilder messageBuilder = new StringBuilder();
+
+        for (String message : messages) {
+            messageBuilder.append(message).append("\n"); // Append each message with a newline
+        }
+
+        // Send the messages to the client, prefixing with "MESSAGES:"
+        out.println("MESSAGES:" + messageBuilder.toString().trim());
+    }
+        
+    // Save the message to the database with user_id and chat_room_id
     private void saveMessageToDatabase(int userId, Integer chatRoomId, String message) {
         String url = "jdbc:mysql://localhost:3306/chat_db"; // Replace with your DB URL and name
         String dbUser = "root"; // Replace with your DB username

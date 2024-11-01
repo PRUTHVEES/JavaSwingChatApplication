@@ -66,6 +66,23 @@ public class ChatClient {
         }
     }
 
+    private void handleIncomingMessage(String message) {
+        // Check if the message is a notification of a user joining
+        if (message.equals(username + " has joined the chat.")) {
+            // Do not display this message to the user
+            return;
+        }
+
+        // Check if the message is from the current user
+        if (message.startsWith(username + ": ")) {
+            String selfMessage = "You: " + message.substring(username.length() + 2); // Add "You:" prefix
+            chatInterface.displayMessage(selfMessage);
+        } else {
+            // For other users' messages, just display them as is
+            chatInterface.displayMessage(message);
+        }
+    }
+    
 
 private class IncomingMessageHandler implements Runnable {
     @Override
@@ -84,6 +101,13 @@ private class IncomingMessageHandler implements Runnable {
                         
                         // Store user ID in a variable, e.g., this.userId = userId;
                         userId = Integer.parseInt(userIdStr);
+                    } else if (message.startsWith("MESSAGES:")) {
+                        String messages = message.substring("MESSAGES:".length()).trim(); // Extract messages
+                        String[] messageArray = messages.split("\n"); // Split messages by newline
+                        
+                        for (String msg : messageArray) {
+                            chatInterface.displayMessage(msg); // Display each message in the chat interface
+                        }
                     } else if (message.equals("ERROR: Invalid username or password. Please try again.")) {
                     loginAttempts--;
                     chatInterface.displayMessage("Invalid login. Attempts remaining: " + loginAttempts);
@@ -94,13 +118,7 @@ private class IncomingMessageHandler implements Runnable {
                         chatInterface.displayMessage("Maximum login attempts reached. Please restart the application.");
                     }
                 } else {
-                    if (message.startsWith(username + ":")) { // username is client's own username
-                        String selfMessage = "You: " + message.substring(username.length() + 2); // Add "You:" prefix
-                        chatInterface.displayMessage(selfMessage);
-                    } else {
-                        // Display regular incoming message
-                        chatInterface.displayMessage(message);
-                    }
+                    handleIncomingMessage(message);
                 }
             }
         } catch (IOException e) {
