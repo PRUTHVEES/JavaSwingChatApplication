@@ -69,7 +69,7 @@ public class ChatServer {
                     String[] parts = message.split(":");
                     if (parts.length == 4) {
                         int senderUserId = Integer.parseInt(parts[1]); // Extract userId
-                        int chatRoomId = (parts[2] != null)? Integer.parseInt(parts[2]) : null; // Extract chatRoomId (can be null)
+                        Integer chatRoomId = (parts[2].equals("null")) ? -1 : Integer.parseInt(parts[2]); // Extract chatRoomId; treat "null" string as null
                         String messageContent = parts[3]; // Extract message content
 
                         // Validate the senderUserId (should match the logged-in user)
@@ -150,24 +150,33 @@ public class ChatServer {
         }
 
         // Save the message to the database with user_id and chat_room_id
-        private void saveMessageToDatabase(int userId, int chatRoomId, String message) {
+    private void saveMessageToDatabase(int userId, Integer chatRoomId, String message) {
         String url = "jdbc:mysql://localhost:3306/chat_db"; // Replace with your DB URL and name
         String dbUser = "root"; // Replace with your DB username
         String dbPassword = ""; // Replace with your DB password
 
+        // Prepare SQL query
         String query = "INSERT INTO chats (user_id, message_content, timestamp, chat_room_id) VALUES (?, ?, NOW(), ?)";
+
         try (Connection conn = DriverManager.getConnection(url, dbUser, dbPassword);
-            PreparedStatement stmt = conn.prepareStatement(query)) {
+             PreparedStatement stmt = conn.prepareStatement(query)) {
 
-            stmt.setInt(1, userId);
-            stmt.setString(2, message);
-            stmt.setInt(4, chatRoomId);
+            // Set parameters for the prepared statement
+            stmt.setInt(1, userId);                // Set user_id
+            stmt.setString(2, message);            // Set message content
+
+            if (chatRoomId == -1) {
+                stmt.setNull(3, Types.INTEGER);    // Set chat_room_id as NULL
+            } else {
+                stmt.setInt(3, chatRoomId);        // Set chat_room_id
+            }
+
             stmt.executeUpdate(); // Execute the insert query
-
         } catch (SQLException e) {
             e.printStackTrace();
         }
     }
+
 
 
         private void broadcast(String message) {

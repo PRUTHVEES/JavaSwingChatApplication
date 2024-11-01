@@ -77,6 +77,7 @@ private class IncomingMessageHandler implements Runnable {
                 // Handle login success message
                     if (message.startsWith("Welcome")) {
                         chatInterface.displayMessage("Login successful! You can start chatting.");
+                        chatInterface.clearLoginFields();
                         chatInterface.enableChat();  // Enable chat area on successful login
                     } else if (message.startsWith("USER_ID:")) {
                         String userIdStr = message.split(":")[1]; // Extract and store user ID
