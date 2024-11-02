@@ -177,36 +177,37 @@ public class ChatServer {
             return false; // Return false if credentials are invalid
         }
 
-        private List<String> retrieveMessages(int userId) {
+        private List<String> retrieveMessages() {
             String url = "jdbc:mysql://localhost:3306/chat_db";
             String dbUser = "root";
             String dbPassword = "";
 
-            String query = "SELECT u.displayname, c.message_content FROM chats c JOIN users u ON c.user_id = u.user_id WHERE c.user_id = ?";
+            // Modify the query to select all messages without filtering by user_id
+            String query = "SELECT u.displayname, c.message_content FROM chats c JOIN users u ON c.user_id = u.user_id ORDER BY c.timestamp"; // Order by timestamp if you want messages in chronological order
             List<String> messages = new ArrayList<>();
 
             try (Connection conn = DriverManager.getConnection(url, dbUser, dbPassword);
-                 PreparedStatement stmt = conn.prepareStatement(query)) {
+                 PreparedStatement stmt = conn.prepareStatement(query);
+                 ResultSet rs = stmt.executeQuery()) {
 
-                stmt.setInt(1, userId);
-                try (ResultSet rs = stmt.executeQuery()) {
-                    while (rs.next()) {
-                        String displayName = rs.getString("displayname");
-                        String messageContent = rs.getString("message_content");
+                while (rs.next()) {
+                    String displayName = rs.getString("displayname");
+                    String messageContent = rs.getString("message_content");
 
-                        String formattedMessage = displayName + ": " + messageContent;
-                        messages.add(formattedMessage);
-                    }
+                    // Format the message
+                    String formattedMessage = displayName + ": " + messageContent;
+                    messages.add(formattedMessage);
                 }
             } catch (SQLException e) {
                 e.printStackTrace();
             }
             return messages;
         }
+        
 
 
     private void sendRetrievedMessagesToClient(PrintWriter out, int userId) {
-        List<String> messages = retrieveMessages(userId); // Retrieve messages for the user
+        List<String> messages = retrieveMessages(); // Retrieve messages for the user
         StringBuilder messageBuilder = new StringBuilder();
 
         for (String message : messages) {
@@ -216,9 +217,10 @@ public class ChatServer {
                 String displayName = messageParts[0]; // Get the display name
                 String messageContent = messageParts[1]; // Get the message content
                 messageBuilder.append(displayName).append(": ").append(messageContent).append("\n"); // Format it
+                
             }
         }
-
+        
         // Send the messages to the client, prefixing with "MESSAGES:"
         out.println("MESSAGES:\n" + messageBuilder.toString().trim());
     }
