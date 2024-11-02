@@ -35,7 +35,6 @@ public class ChatClient {
                     chatInterface.displayMessage("Connected to the server.");
                     chatInterface.enableLogin();
                     
-                    
                     break; // Exit loop once connected
 
                 } catch (IOException e) {
@@ -72,7 +71,7 @@ public class ChatClient {
     
     private void handleIncomingMessage(String message) {
         // Check if the message is a notification of a user joining
-        if (message.startsWith(displayName + " has joined")) {
+        if (message.startsWith(displayName + " has joined") || (message.startsWith(displayName + ":"))) {
             // Optionally, handle the user joining notification
             return; // Do not display this message to the user
         }
@@ -92,12 +91,31 @@ public class ChatClient {
             }
         } else {
             // Handle unexpected message format
-            chatInterface.displayMessage("Received message in unexpected format: " + message);
+            chatInterface.displayMessage(message);
         }
     }
 
 
-    
+        private void displayRetrievedMessages(String message) {
+            String messages = message.substring("MESSAGES:".length()).trim(); // Extract messages
+            String[] messageArray = messages.split("\n"); // Split messages by newline
+
+            for (String msg : messageArray) {
+                String[] messageParts = msg.split(": ", 2); // Split on ": " to separate display name from message content
+
+                if (messageParts.length == 2) {
+                    String senderDisplayName = messageParts[0];
+                    String messageContent = messageParts[1];
+
+                    // Check if the sender is the current user
+                    if (senderDisplayName.equals(displayName)) {
+                        chatInterface.displayMessage("You: " + messageContent); // Format message for the user
+                    } else {
+                        chatInterface.displayMessage(senderDisplayName + ": " + messageContent); // Display messages from others
+                     }
+                }
+            }  
+        }
 
 private class IncomingMessageHandler implements Runnable {
     @Override
@@ -114,24 +132,7 @@ private class IncomingMessageHandler implements Runnable {
                         displayName = message.split(":")[1]; // Extract and store display name
                         chatInterface.displayMessage("Your display name is: " + displayName); // Notify user of display name
                     } else if (message.startsWith("MESSAGES:")) { // Check if the message starts with "MESSAGES:"
-                            String messages = message.substring("MESSAGES:".length()).trim(); // Extract messages
-                            String[] messageArray = messages.split("\n"); // Split messages by newline
-
-                            for (String msg : messageArray) {
-                                String[] messageParts = msg.split(": ", 2); // Split on ": " to separate display name from message content
-
-                                if (messageParts.length == 2) {
-                                        String senderDisplayName = messageParts[0];
-                                        String messageContent = messageParts[1];
-
-                                        // Check if the sender is the current user
-                                        if (senderDisplayName.equals(displayName)) {
-                                            chatInterface.displayMessage("You: " + messageContent); // Format message for the user
-                                        } else {
-                                            chatInterface.displayMessage(senderDisplayName + ": " + messageContent); // Display messages from others
-                                        }
-                                    }
-                            }   
+                             displayRetrievedMessages(message);
                 } else if (message.equals("ERROR: Invalid username or password. Please try again.")) {
                         loginAttempts--;
                         chatInterface.displayMessage("Invalid login. Attempts remaining: " + loginAttempts);

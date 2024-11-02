@@ -97,7 +97,7 @@ public class ChatServer {
             String[] parts = message.split(":");
             if (parts.length == 4 && parts[0].equals("MESSAGE")) {
                 String displayName = parts[1];
-                String chatRoomId = parts[2]; // If you're using chat rooms
+                Integer chatRoomId = (parts[2] != "null") ? Integer.parseInt(parts[2]) : -1; // If you're using chat rooms
                 String messageContent = parts[3];
 
                 // Store the message in the database
@@ -228,7 +228,7 @@ public class ChatServer {
 
         
     
-    private void saveMessageToDatabase(String displayName, String messageContent, String chatRoomId) {
+    private void saveMessageToDatabase(String displayName, String messageContent, int chatRoomId) {
         String url = "jdbc:mysql://localhost:3306/chat_db"; // Your DB URL and name
         String dbUser = "root"; // Your DB username
         String dbPassword = ""; // Your DB password
@@ -244,7 +244,13 @@ public class ChatServer {
         
             stmt.setInt(1, userId);
             stmt.setString(2, messageContent);
-            stmt.setString(3, chatRoomId); // Or null if not using chat rooms
+            
+            if(chatRoomId == -1) {
+                stmt.setNull(3, Types.INTEGER);    // Set chat_room_id as NULL
+            } else {
+                stmt.setInt(3, chatRoomId); // Or null if not using chat rooms
+            }
+            
             stmt.executeUpdate();
         } catch (SQLException e) {
             e.printStackTrace();
@@ -256,7 +262,7 @@ public class ChatServer {
         String dbUser = "root"; // Your DB username
         String dbPassword = ""; // Your DB password
 
-        String query = "SELECT user_id FROM users WHERE display_name = ?";
+        String query = "SELECT user_id FROM users WHERE displayname = ?";
         int userId = -1;
 
         try (Connection conn = DriverManager.getConnection(url, dbUser, dbPassword);
@@ -275,10 +281,7 @@ public class ChatServer {
         return userId;
     }
 
-
-
-
-        private void broadcast(String message) {
+    private void broadcast(String message) {
             synchronized (clientWriters) {
                 for (PrintWriter writer : clientWriters) {
                     writer.println(message); // Send message to all connected clients
