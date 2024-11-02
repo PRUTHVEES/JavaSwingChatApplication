@@ -97,7 +97,13 @@ public class ChatServer {
             String[] parts = message.split(":");
             if (parts.length == 4 && parts[0].equals("MESSAGE")) {
                 String displayName = parts[1];
-                Integer chatRoomId = (parts[2] != "null") ? Integer.parseInt(parts[2]) : -1; // If you're using chat rooms
+                int chatRoomId;
+                if(!(parts[2].equals("null"))) { 
+                    chatRoomId = Integer.parseInt(parts[2]);
+                } else {
+                    chatRoomId = -1;
+                }  // If you're using chat rooms
+                
                 String messageContent = parts[3];
 
                 // Store the message in the database
