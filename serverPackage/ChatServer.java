@@ -7,6 +7,20 @@ public class ChatServer {
     private static final int PORT = 12345; // Define the port
     private static Set<PrintWriter> clientWriters = new HashSet<>();
 
+    private static boolean isDatabaseOnline() {
+        String url = "jdbc:mysql://localhost:3306/chat_db"; // Replace with your database URL
+        String dbUser = "root"; // Replace with your database username
+        String dbPassword = ""; // Replace with your database password
+
+        try (Connection conn = DriverManager.getConnection(url, dbUser, dbPassword)) {
+            return true; // Database is online and reachable
+        } catch (SQLException e) {
+            System.out.println("Database connection failed: " + e.getMessage());
+            return false; // Database is offline or unreachable
+        }
+    }
+
+    
     public static void main(String[] args) {
         System.out.println("Chat Server started...");
         try (ServerSocket serverSocket = new ServerSocket(PORT)) {
@@ -23,15 +37,25 @@ public class ChatServer {
         private PrintWriter out;
         private BufferedReader in;
         private String username; // Store the username after login
-
+        protected String url = "jdbc:mysql://localhost:3306/chat_db"; // Your DB URL and name
+        protected String dbUser = "root"; // Your DB username
+        protected String dbPassword = ""; // Your DB password
+        
         public ClientHandler(Socket socket) {
             this.socket = socket;
         }
-
+        
         public void run() {
             try {
                 in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
                 out = new PrintWriter(socket.getOutputStream(), true);
+
+                // Check if the database is online before proceeding
+                if (!isDatabaseOnline()) {
+                    out.println("ERROR: Database is not active. Please try again later.");
+                    return; // Stop further execution for this client
+                }
+
                 synchronized (clientWriters) {
                     clientWriters.add(out); // Add client writer to the set
                 }
@@ -46,7 +70,7 @@ public class ChatServer {
                             String passwordAttempt = parts[2];
 
                             // Check credentials from the database
-                            if(checkCredentials(usernameAttempt, passwordAttempt)) {
+                            if (checkCredentials(usernameAttempt, passwordAttempt)) {
                                 username = usernameAttempt; // Set username on successful login
                                 int userId = getUserId(usernameAttempt);
                                 String displayName = getDisplayName(usernameAttempt); // Get display name from the database
@@ -65,17 +89,17 @@ public class ChatServer {
                     }
                 }
 
-                    // Handle incoming messages
-                    String message;
-                    while ((message = in.readLine()) != null) {
-                        if (username != null) {
-                            handleMessage(message,out);
-                        } else {
-                            out.println("ERROR: Message format is incorrect. Use: MESSAGE:userId:chatRoomId:messageContent");
-                        }
+                // Handle incoming messages
+                String message;
+                while ((message = in.readLine()) != null) {
+                    if (username != null) {
+                        handleMessage(message, out);
+                    } else {
+                        out.println("ERROR: Message format is incorrect. Use: MESSAGE:userId:chatRoomId:messageContent");
                     }
-                } catch (IOException e) {
-                    e.printStackTrace();
+                }
+            } catch (IOException e) {
+                System.out.println(e.getMessage());
             } finally {
                 try {
                     socket.close();
@@ -92,11 +116,10 @@ public class ChatServer {
             }
         }
 
+
     
         private void updateActiveStatus(int userId, boolean isActive) {
-            String url = "jdbc:mysql://localhost:3306/chat_db"; // Your DB URL and name
-            String dbUser = "root"; // Your DB username
-            String dbPassword = ""; // Your DB password
+            
 
             String query = "UPDATE users SET is_active = ?, last_login = ? WHERE user_id = ?";
             try (Connection conn = DriverManager.getConnection(url, dbUser, dbPassword);
@@ -135,12 +158,7 @@ public class ChatServer {
 
 
         private int getUserId(String username) {
-                // Database connection settings
-                String url = "jdbc:mysql://localhost:3306/chat_db"; // Replace with your DB URL and name
-                String dbUser = "root"; // Replace with your DB username
-                String dbPassword = ""; // Replace with your DB password
-            
-                String query = "SELECT user_id FROM users WHERE username = ?";
+            String query = "SELECT user_id FROM users WHERE username = ?";
                 try (Connection conn = DriverManager.getConnection(url, dbUser, dbPassword);
                 PreparedStatement stmt = conn.prepareStatement(query)) {
 
@@ -157,10 +175,6 @@ public class ChatServer {
         }
         
         private String getDisplayName(String username) {
-            String url = "jdbc:mysql://localhost:3306/chat_db"; // Replace with your DB URL
-            String dbUser = "root"; // Replace with your DB username
-            String dbPassword = ""; // Replace with your DB password
-
             String query = "SELECT displayname FROM users WHERE username = ?";
             String displayName = null;
 
@@ -180,11 +194,6 @@ public class ChatServer {
         }
         
         private boolean checkCredentials(String username, String password) {
-            // Database connection settings
-            String url = "jdbc:mysql://localhost:3306/chat_db"; // Replace with your DB URL and name
-            String dbUser = "root"; // Replace with your DB username
-            String dbPassword = ""; // Replace with your DB password
-
             String query = "SELECT password FROM users WHERE username = ?";
             try (Connection conn = DriverManager.getConnection(url, dbUser, dbPassword);
                  PreparedStatement stmt = conn.prepareStatement(query)) {
@@ -203,9 +212,6 @@ public class ChatServer {
         }
 
         private List<String> retrieveMessages() {
-            String url = "jdbc:mysql://localhost:3306/chat_db";
-            String dbUser = "root";
-            String dbPassword = "";
 
             // Modify the query to select all messages without filtering by user_id
             String query = "SELECT u.displayname, c.message_content FROM chats c JOIN users u ON c.user_id = u.user_id ORDER BY c.timestamp"; // Order by timestamp if you want messages in chronological order
@@ -254,10 +260,6 @@ public class ChatServer {
         
     
     private void saveMessageToDatabase(String displayName, String messageContent, int chatRoomId) {
-        String url = "jdbc:mysql://localhost:3306/chat_db"; // Your DB URL and name
-        String dbUser = "root"; // Your DB username
-        String dbPassword = ""; // Your DB password
-
         // First, find the user_id associated with the displayName
         int userId = getUserIdFromDisplayName(displayName);
     
@@ -283,10 +285,6 @@ public class ChatServer {
     }
 
     private int getUserIdFromDisplayName(String displayName) {
-        String url = "jdbc:mysql://localhost:3306/chat_db"; // Your DB URL and name
-        String dbUser = "root"; // Your DB username
-        String dbPassword = ""; // Your DB password
-
         String query = "SELECT user_id FROM users WHERE displayname = ?";
         int userId = -1;
 

@@ -12,6 +12,7 @@ public class ChatClient {
     private int loginAttempts = 5;
     private ChatInterface chatInterface;
     private int userId = -1;
+    private boolean cancelConnection = false;  // Flag to control connection retry
     private String displayName = null;
 
     public ChatClient(String serverAddress, int port, ChatInterface chatInterface) {
@@ -21,7 +22,7 @@ public class ChatClient {
 
     private void connectToServer(String serverAddress, int port) {
         new Thread(() -> {
-            while (true) {
+            while (!cancelConnection) {
                 chatInterface.disableLogin();
                 try {
                     socket = new Socket(serverAddress, port);
@@ -50,6 +51,17 @@ public class ChatClient {
         }).start();
     }
 
+    public void cancelConnectionAttempt() {
+        cancelConnection = true;
+        try {
+            if (socket != null && !socket.isClosed()) {
+                socket.close();
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+    
     public void sendLoginCredentials(String username, String password) {
         this.username = username;
         this.password = password;
@@ -153,6 +165,7 @@ public class ChatClient {
         private JButton loginButton;
         private JButton addUserButton;
         private JPanel userPanel;
+        private JButton cancelButton;
         private ChatClient chatClient;
 
         public ChatInterface() {
@@ -176,6 +189,7 @@ public class ChatClient {
             sendButton = new JButton("Send");
             loginButton = new JButton("Login");
             addUserButton = new JButton("Add User");
+            cancelButton = new JButton("Cancel");
             userPanel = new JPanel();
 
             messageField.setEditable(false);
@@ -205,6 +219,7 @@ public class ChatClient {
             loginPanel.add(usernameField);
             loginPanel.add(new JLabel("Password:"));
             loginPanel.add(passwordField);
+            loginPanel.add(cancelButton);
             loginPanel.add(loginButton);
             frame.add(loginPanel, BorderLayout.NORTH);
 
@@ -226,6 +241,7 @@ public class ChatClient {
             sendButton.addActionListener(e -> sendMessage());
             messageField.addActionListener(e -> sendMessage());
             addUserButton.addActionListener(e -> addUser());
+            cancelButton.addActionListener(e -> cancelConnectionAttempt()); 
         }
 
         private void attemptLogin() {
@@ -278,6 +294,11 @@ public class ChatClient {
             addUserButton.setEnabled(true);
         }
 
+        private void cancelConnectionAttempt() {
+            chatClient.cancelConnectionAttempt();  // Trigger cancel on ChatClient
+            displayMessage("Connection canceled by user.");
+        }
+        
         public void displayMessage(String message) {
             chatArea.append(message + "\n");
         }
