@@ -12,6 +12,7 @@ public class ChatClient {
     private int loginAttempts = 5;
     private ChatInterface chatInterface;
     private int userId = -1;
+    private String displayName = null;
     
     public ChatClient(String serverAddress, int port, ChatInterface chatInterface) {
         this.chatInterface = chatInterface;
@@ -33,6 +34,8 @@ public class ChatClient {
                     
                     chatInterface.displayMessage("Connected to the server.");
                     chatInterface.enableLogin();
+                    
+                    
                     break; // Exit loop once connected
 
                 } catch (IOException e) {
@@ -58,73 +61,79 @@ public class ChatClient {
     }
 
     public void sendMessage(String message) {
-        if (userId != -1) { // Ensure userId is set
-            String formattedMessage = "MESSAGE:" + userId + ":null:" + message;
+        if (displayName != null) { // Ensure userId is set
+            String formattedMessage = "MESSAGE:" + displayName + ":null:" + message;
             out.println(formattedMessage); // Send message with userId and null for chatRoomId
+            chatInterface.displayMessage("You: " + message);
         } else {
-            System.out.println("Error: User ID not set. Login is required.");
+            System.out.println("Error: Login is required.");
         }
     }
-
+    
     private void handleIncomingMessage(String message) {
-        // Check if the message is a notification of a user joining
-        if (message.equals(username + " has joined the chat.")) {
-            // Do not display this message to the user
-            return;
-        }
+        // Split the message to get the display name and content
+        String[] messageParts = message.split(": ", 2); // Split on ": " to separate display name from message content
+        
+        if (messageParts.length == 2) {
+            String senderDisplayName = messageParts[0];
+            String messageContent = messageParts[1];
 
-        // Check if the message is from the current user
-        if (message.startsWith(username + ": ")) {
-            String selfMessage = "You: " + message.substring(username.length() + 2); // Add "You:" prefix
-            chatInterface.displayMessage(selfMessage);
+            // Check if the sender is the current user
+            if (senderDisplayName.equals(displayName)) {
+                chatInterface.displayMessage("You: " + messageContent); // Format message for the user
+            } else {
+                chatInterface.displayMessage(senderDisplayName + ": " + messageContent); // Display messages from others
+            }
         } else {
-            // For other users' messages, just display them as is
-            chatInterface.displayMessage(message);
+            // Handle unexpected message format
+            if(message.startsWith(displayName + " has joined")) {
+                return;
+            } else {
+                chatInterface.displayMessage("Received message in unexpected format: " + message);
+            }
         }
     }
+
     
 
 private class IncomingMessageHandler implements Runnable {
     @Override
     public void run() {
-        try {
-            String message;
-            while ((message = in.readLine()) != null) {
-                
-                // Handle login success message
+            try {
+                String message;
+                while ((message = in.readLine()) != null) {
+                    // Handle login success message
                     if (message.startsWith("Welcome")) {
                         chatInterface.displayMessage("Login successful! You can start chatting.");
                         chatInterface.clearLoginFields();
                         chatInterface.enableChat();  // Enable chat area on successful login
-                    } else if (message.startsWith("USER_ID:")) {
-                        String userIdStr = message.split(":")[1]; // Extract and store user ID
-                        
-                        // Store user ID in a variable, e.g., this.userId = userId;
-                        userId = Integer.parseInt(userIdStr);
+                    } else if (message.startsWith("DISPLAY_NAME:")) {
+                        displayName = message.split(":")[1]; // Extract and store display name
+                        chatInterface.displayMessage("Your display name is: " + displayName); // Notify user of display name
                     } else if (message.startsWith("MESSAGES:")) {
                         String messages = message.substring("MESSAGES:".length()).trim(); // Extract messages
                         String[] messageArray = messages.split("\n"); // Split messages by newline
-                        
+
                         for (String msg : messageArray) {
                             chatInterface.displayMessage(msg); // Display each message in the chat interface
                         }
                     } else if (message.equals("ERROR: Invalid username or password. Please try again.")) {
-                    loginAttempts--;
-                    chatInterface.displayMessage("Invalid login. Attempts remaining: " + loginAttempts);
-                    if (loginAttempts > 0) {
-                        chatInterface.clearLoginFields();  // Clear login fields on failed login
+                        loginAttempts--;
+                        chatInterface.displayMessage("Invalid login. Attempts remaining: " + loginAttempts);
+                        if (loginAttempts > 0) {
+                            chatInterface.clearLoginFields();  // Clear login fields on failed login
+                        } else {
+                            chatInterface.disableLogin();
+                            chatInterface.displayMessage("Maximum login attempts reached. Please restart the application.");
+                        }
                     } else {
-                        chatInterface.disableLogin();
-                        chatInterface.displayMessage("Maximum login attempts reached. Please restart the application.");
+                        handleIncomingMessage(message);
                     }
-                } else {
-                    handleIncomingMessage(message);
                 }
+            } catch (IOException e) {
+                e.printStackTrace();
             }
-        } catch (IOException e) {
-            e.printStackTrace();
         }
-    }
 }
 
 
