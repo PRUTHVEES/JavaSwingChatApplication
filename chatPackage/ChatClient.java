@@ -90,8 +90,9 @@ public class ChatClient {
                 chatInterface.displayMessage(senderDisplayName + ": " + messageContent); // Display messages from others
             }
         } else {
-            // Handle unexpected message format
             chatInterface.displayMessage(message);
+            
+            
         }
     }
 
@@ -107,12 +108,14 @@ public class ChatClient {
                     String senderDisplayName = messageParts[0];
                     String messageContent = messageParts[1];
 
+                    chatInterface.displayMessage("Sender: " + senderDisplayName + ", Content: " + messageContent);
+/*
                     // Check if the sender is the current user
                     if (senderDisplayName.equals(displayName)) {
                         chatInterface.displayMessage("You: " + messageContent); // Format message for the user
                     } else {
                         chatInterface.displayMessage(senderDisplayName + ": " + messageContent); // Display messages from others
-                     }
+                     }*/
                 }
             }  
         }
@@ -132,8 +135,8 @@ private class IncomingMessageHandler implements Runnable {
                         displayName = message.split(":")[1]; // Extract and store display name
                         chatInterface.displayMessage("Your display name is: " + displayName); // Notify user of display name
                     } else if (message.startsWith("MESSAGES:")) { // Check if the message starts with "MESSAGES:"
-                             displayRetrievedMessages(message);
-                } else if (message.equals("ERROR: Invalid username or password. Please try again.")) {
+                        displayRetrievedMessages(message);
+                    } else if (message.equals("ERROR: Invalid username or password. Please try again.")) {
                         loginAttempts--;
                         chatInterface.displayMessage("Invalid login. Attempts remaining: " + loginAttempts);
                         if (loginAttempts > 0) {
@@ -231,12 +234,16 @@ public static class ChatInterface {
         frame.setVisible(true);
 
         sendButton.setEnabled(false);
+        addUserButton.setEnabled(false);
+        
+        // KeyListener for usernameField to send login credentials on Enter key
+        usernameField.addActionListener(e -> attemptLogin());
 
-        loginButton.addActionListener(e -> {
-            String username = usernameField.getText();
-            String password = new String(passwordField.getPassword());
-            chatClient.sendLoginCredentials(username, password);
-        });
+        // KeyListener for passwordField to send login credentials on Enter key
+        passwordField.addActionListener(e -> attemptLogin());
+
+        
+        loginButton.addActionListener(e -> attemptLogin());
 
         sendButton.addActionListener(e -> sendMessage());
         messageField.addActionListener(e -> sendMessage());
@@ -244,6 +251,12 @@ public static class ChatInterface {
         addUserButton.addActionListener(e -> addUser()); // Set action for "Add User" button
     }
 
+    private void attemptLogin() {
+        String username = usernameField.getText();
+        String password = new String(passwordField.getPassword());
+        chatClient.sendLoginCredentials(username, password);
+    }
+    
     private void sendMessage() {
         String message = messageField.getText();
         if (!message.isEmpty()) {
@@ -277,6 +290,7 @@ public static class ChatInterface {
         usernameField.setEditable(true);
         passwordField.setEditable(true);
         
+        
         sendButton.setToolTipText("Please login first to send messages");
         messageField.setToolTipText("Please login first to send messages");
     }
@@ -291,6 +305,8 @@ public static class ChatInterface {
         loginButton.setEnabled(false); // Disable login button after successful login
         usernameField.setEditable(false);
         passwordField.setEditable(false);
+        
+        addUserButton.setEnabled(true);
     }
 
     public void displayMessage(String message) {

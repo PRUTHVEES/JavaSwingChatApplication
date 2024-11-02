@@ -223,7 +223,6 @@ public class ChatServer {
                 String displayName = messageParts[0]; // Get the display name
                 String messageContent = messageParts[1]; // Get the message content
                 messageBuilder.append(displayName).append(": ").append(messageContent).append("\n"); // Format it
-                
             }
         }
         
