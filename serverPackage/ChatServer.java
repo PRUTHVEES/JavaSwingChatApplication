@@ -86,12 +86,31 @@ public class ChatServer {
                     clientWriters.remove(out); // Remove client writer on disconnect
                 }
                 if (username != null) {
-                broadcast(username + " has left the chat."); // Notify others
+                    updateActiveStatus(getUserId(username), false); // Set is_active to 0 and update last_login timestamp on disconnect
+                    broadcast(username + " has left the chat."); // Notify others
                 }
             }
         }
 
     
+        private void updateActiveStatus(int userId, boolean isActive) {
+            String url = "jdbc:mysql://localhost:3306/chat_db"; // Your DB URL and name
+            String dbUser = "root"; // Your DB username
+            String dbPassword = ""; // Your DB password
+
+            String query = "UPDATE users SET is_active = ?, last_login = ? WHERE user_id = ?";
+            try (Connection conn = DriverManager.getConnection(url, dbUser, dbPassword);
+                 PreparedStatement stmt = conn.prepareStatement(query)) {
+
+                stmt.setBoolean(1, isActive);
+                stmt.setTimestamp(2, new Timestamp(System.currentTimeMillis())); // Set current time
+                stmt.setInt(3, userId);
+                stmt.executeUpdate();
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        }
+        
         private void handleMessage(String message, PrintWriter out) {
             // Example message format: MESSAGE:<displayName>:<chatRoomId>:<messageContent>
             String[] parts = message.split(":");

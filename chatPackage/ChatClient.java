@@ -88,6 +88,24 @@ public class ChatClient {
         }
     }
 
+    private void handleRetrievedMessages(String message) {
+        String messages = message.substring("MESSAGES:".length()).trim();
+        String[] messageArray = messages.split("\n");
+
+        for (String msg : messageArray) {
+            String[] messageParts = msg.split(": ", 2);
+
+            if (messageParts.length == 2) {
+                String senderDisplayName = messageParts[0];
+                String messageContent = messageParts[1];
+
+                                
+                chatInterface.displayMessage(senderDisplayName + ": " + messageContent);
+                                
+            }
+        }
+    }
+    
     private class IncomingMessageHandler implements Runnable {
         @Override
         public void run() {
@@ -102,21 +120,7 @@ public class ChatClient {
                         displayName = message.split(":")[1];
                         chatInterface.displayMessage("Your display name is: " + displayName);
                     } else if (message.startsWith("MESSAGES:")) {
-                        String messages = message.substring("MESSAGES:".length()).trim();
-                        String[] messageArray = messages.split("\n");
-
-                        for (String msg : messageArray) {
-                            String[] messageParts = msg.split(": ", 2);
-
-                            if (messageParts.length == 2) {
-                                String senderDisplayName = messageParts[0];
-                                String messageContent = messageParts[1];
-
-                                
-                                chatInterface.displayMessage(senderDisplayName + ": " + messageContent);
-                                
-                            }
-                        }
+                        handleRetrievedMessages(message);
                     } else if (message.equals("ERROR: Invalid username or password. Please try again.")) {
                         loginAttempts--;
                         chatInterface.displayMessage("Invalid login. Attempts remaining: " + loginAttempts);
@@ -136,19 +140,7 @@ public class ChatClient {
         }
     }
 
-    public void disconnect() {
-        if (out != null) {
-            out.println("DISCONNECT:" + username);
-            out.close();
-        }
-        try {
-            if (socket != null) {
-                socket.close();
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
+  
 
     
     public static class ChatInterface {
@@ -224,15 +216,6 @@ public class ChatClient {
             frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
             frame.pack();
             frame.setVisible(true);
-
-            // Add WindowListener to handle window closing event
-            frame.addWindowListener(new java.awt.event.WindowAdapter() {
-                @Override
-                public void windowClosing(java.awt.event.WindowEvent windowEvent) {
-                    chatClient.disconnect();  // Notify server on window close
-                    System.exit(0);
-                }
-            });
             
             sendButton.setEnabled(false);
             addUserButton.setEnabled(false);
