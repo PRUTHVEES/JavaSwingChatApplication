@@ -164,10 +164,12 @@ public static class ChatInterface {
         addUserButton = new JButton("Add User"); // Initialize "Add User" button
         userPanel = new JPanel(); // Initialize user panel
 
+        messageField.setEditable(false);
+        
         chatArea.setEditable(false);
         JScrollPane scrollPane = new JScrollPane(chatArea);
         userPanel.setLayout(new BorderLayout());
-        userPanel.setPreferredSize(new Dimension(150, 0)); // Set preferred width
+        userPanel.setPreferredSize(new Dimension(300, 0)); // Set preferred width
 
         // Add components to user panel
         JPanel topPanel = new JPanel(new BorderLayout()); // Panel to hold label and add button
@@ -240,16 +242,27 @@ public static class ChatInterface {
         loginButton.setEnabled(false);
         usernameField.setEditable(false);
         passwordField.setEditable(false);
+        
+        sendButton.setToolTipText(null);
+        messageField.setToolTipText(null);
     }
 
     public void enableLogin() {
         loginButton.setEnabled(true);
         usernameField.setEditable(true);
         passwordField.setEditable(true);
+        
+        sendButton.setToolTipText("Please login first to send messages");
+        messageField.setToolTipText("Please login first to send messages");
     }
     
     public void enableChat() {
+        sendButton.setToolTipText(null);
+        messageField.setToolTipText(null);
+        
         sendButton.setEnabled(true); // Enable send button after successful login
+        messageField.setEditable(true);
+        
         loginButton.setEnabled(false); // Disable login button after successful login
         usernameField.setEditable(false);
         passwordField.setEditable(false);
