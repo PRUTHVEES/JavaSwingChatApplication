@@ -228,6 +228,7 @@ public class ChatServer {
         
         // Send the messages to the client, prefixing with "MESSAGES:"
         out.println("MESSAGES:\n" + messageBuilder.toString().trim());
+        System.out.println(messageBuilder.toString());
     }
 
 
