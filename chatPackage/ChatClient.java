@@ -71,6 +71,12 @@ public class ChatClient {
     }
     
     private void handleIncomingMessage(String message) {
+        // Check if the message is a notification of a user joining
+        if (message.startsWith(displayName + " has joined")) {
+            // Optionally, handle the user joining notification
+            return; // Do not display this message to the user
+        }
+
         // Split the message to get the display name and content
         String[] messageParts = message.split(": ", 2); // Split on ": " to separate display name from message content
         
@@ -86,13 +92,10 @@ public class ChatClient {
             }
         } else {
             // Handle unexpected message format
-            if(message.startsWith(displayName + " has joined")) {
-                return;
-            } else {
-                chatInterface.displayMessage("Received message in unexpected format: " + message);
-            }
+            chatInterface.displayMessage("Received message in unexpected format: " + message);
         }
     }
+
 
     
 
@@ -110,14 +113,26 @@ private class IncomingMessageHandler implements Runnable {
                     } else if (message.startsWith("DISPLAY_NAME:")) {
                         displayName = message.split(":")[1]; // Extract and store display name
                         chatInterface.displayMessage("Your display name is: " + displayName); // Notify user of display name
-                    } else if (message.startsWith("MESSAGES:")) {
-                        String messages = message.substring("MESSAGES:".length()).trim(); // Extract messages
-                        String[] messageArray = messages.split("\n"); // Split messages by newline
+                    } else if (message.startsWith("MESSAGES:")) { // Check if the message starts with "MESSAGES:"
+                            String messages = message.substring("MESSAGES:".length()).trim(); // Extract messages
+                            String[] messageArray = messages.split("\n"); // Split messages by newline
 
-                        for (String msg : messageArray) {
-                            chatInterface.displayMessage(msg); // Display each message in the chat interface
-                        }
-                    } else if (message.equals("ERROR: Invalid username or password. Please try again.")) {
+                            for (String msg : messageArray) {
+                                String[] messageParts = msg.split(": ", 2); // Split on ": " to separate display name from message content
+
+                                if (messageParts.length == 2) {
+                                        String senderDisplayName = messageParts[0];
+                                        String messageContent = messageParts[1];
+
+                                        // Check if the sender is the current user
+                                        if (senderDisplayName.equals(displayName)) {
+                                            chatInterface.displayMessage("You: " + messageContent); // Format message for the user
+                                        } else {
+                                            chatInterface.displayMessage(senderDisplayName + ": " + messageContent); // Display messages from others
+                                        }
+                                    }
+                            }   
+                } else if (message.equals("ERROR: Invalid username or password. Please try again.")) {
                         loginAttempts--;
                         chatInterface.displayMessage("Invalid login. Attempts remaining: " + loginAttempts);
                         if (loginAttempts > 0) {
