@@ -136,7 +136,8 @@ public static class ChatInterface {
     private JPasswordField passwordField;
     private JButton sendButton;
     private JButton loginButton;
-    private JPanel userPanel;  // New user panel for displaying user info
+    private JButton addUserButton; // New button for adding users
+    private JPanel userPanel;  // User panel for displaying user info and "Add User" button
     private ChatClient chatClient;
 
     public ChatInterface() {
@@ -160,6 +161,7 @@ public static class ChatInterface {
         passwordField = new JPasswordField(15);
         sendButton = new JButton("Send");
         loginButton = new JButton("Login");
+        addUserButton = new JButton("Add User"); // Initialize "Add User" button
         userPanel = new JPanel(); // Initialize user panel
 
         chatArea.setEditable(false);
@@ -168,7 +170,11 @@ public static class ChatInterface {
         userPanel.setPreferredSize(new Dimension(150, 0)); // Set preferred width
 
         // Add components to user panel
-        userPanel.add(new JLabel("Online Users"), BorderLayout.NORTH);
+        JPanel topPanel = new JPanel(new BorderLayout()); // Panel to hold label and add button
+        topPanel.add(new JLabel("Online Users"), BorderLayout.WEST);
+        topPanel.add(addUserButton, BorderLayout.EAST); // Add "Add User" button next to label
+        userPanel.add(topPanel, BorderLayout.NORTH);
+
         JTextArea usersArea = new JTextArea();
         usersArea.setEditable(false);
         userPanel.add(new JScrollPane(usersArea), BorderLayout.CENTER);
@@ -207,6 +213,8 @@ public static class ChatInterface {
 
         sendButton.addActionListener(e -> sendMessage());
         messageField.addActionListener(e -> sendMessage());
+
+        addUserButton.addActionListener(e -> addUser()); // Set action for "Add User" button
     }
 
     private void sendMessage() {
@@ -215,6 +223,12 @@ public static class ChatInterface {
             chatClient.sendMessage(message);
             messageField.setText("");
         }
+    }
+
+    // Placeholder method for adding a user
+    private void addUser() {
+        // Action to add a user (for now, we can just display a message)
+        displayMessage("Add User functionality will be added soon.");
     }
 
     public void clearLoginFields() {
@@ -251,6 +265,7 @@ public static class ChatInterface {
         usersArea.setText(String.join("\n", users));
     }
 }
+
 
 
     public static void main(String[] args) {
