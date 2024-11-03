@@ -10,7 +10,8 @@ public class ChatServer {
     private static final int PORT = 12345; // Define the port
     private static Set<PrintWriter> clientWriters = new HashSet<>();
     private static final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
-    private static boolean isDatabaseAvailable = false; // Track database status
+    private static volatile boolean isDatabaseAvailable = false; // Track database status
+    private static boolean alreadyNotified = false; 
     
     private static boolean isDatabaseOnline() {
         String url = "jdbc:mysql://localhost:3306/chat_db"; // Replace with your database URL
@@ -18,6 +19,7 @@ public class ChatServer {
         String dbPassword = ""; // Replace with your database password
 
         try (Connection conn = DriverManager.getConnection(url, dbUser, dbPassword)) {
+            System.out.println("Database is online");
             return true; // Database is online and reachable
         } catch (SQLException e) {
             System.out.println("Database connection failed: " + e.getMessage());
@@ -25,37 +27,9 @@ public class ChatServer {
         }
     }
 
-    private static void startDatabaseStatusChecker() {
-        scheduler.scheduleAtFixedRate(() -> {
-            boolean currentlyAvailable = checkDatabaseConnection();
-            if (currentlyAvailable != isDatabaseAvailable) {
-                isDatabaseAvailable = currentlyAvailable;
-
-                if (!isDatabaseAvailable) {
-                    System.out.println("Database is offline. Notifying connected clients.");
-                    notifyClients("ERROR: Database is not active. Please try again later.");
-                } else {
-                    System.out.println("Database connection restored.");
-                }
-            }
-        }, 0, 5, TimeUnit.SECONDS); // Check every 5 seconds
-    }
-    
-    private static boolean checkDatabaseConnection() {
-        try (Connection conn = DriverManager.getConnection("jdbc:mysql://localhost:3306/chat_db", "root", "")) {
-            return true; // Database is online and reachable
-        } catch (SQLException e) {
-            System.out.println("Database connection failed: " + e.getMessage());
-            return false; // Database is offline or unreachable
-        }
-    }
-    
-    
-    
     public static void main(String[] args) {
         System.out.println("Chat Server started...");
-        startDatabaseStatusChecker();
-        
+
         try (ServerSocket serverSocket = new ServerSocket(PORT)) {
             while (true) {
                 new ClientHandler(serverSocket.accept()).start(); // Handle new client connections
@@ -65,30 +39,54 @@ public class ChatServer {
         }
     }
 
-    private static void notifyClients(String message) {
-        for (PrintWriter writer : clientWriters) {
-            writer.println(message);
+    private static void startDatabaseStatusChecker() {
+        scheduler.scheduleAtFixedRate(() -> {
+            boolean currentlyAvailable = isDatabaseOnline();
+            if (currentlyAvailable == false && alreadyNotified == false) {
+                System.out.println("Database is offline. Notifying connected clients.");
+                broadcastDatabaseIssue(); // Notify all clients of the database issue
+            } else if(alreadyNotified == true) {
+                return;
+            }else {
+                System.out.println("Database connection restored.");
+                broadcast("INFO: Database connection restored.");
+            }
+        }, 0, 5, TimeUnit.SECONDS); // Check every 5 seconds
+    }
+
+    private static void broadcastDatabaseIssue() {
+        broadcast("ERROR: Database is currently offline. Please try again later.");
+        alreadyNotified = true;
+    }
+
+    private static void broadcast(String message) {
+        synchronized (clientWriters) {
+            for (PrintWriter writer : clientWriters) {
+                writer.println(message); // Send message to all connected clients
+            }
         }
     }
-    
+
     private static class ClientHandler extends Thread {
         private Socket socket;
         private PrintWriter out;
         private BufferedReader in;
         private String username; // Store the username after login
-        protected String url = "jdbc:mysql://localhost:3306/chat_db"; // Your DB URL and name
-        protected String dbUser = "root"; // Your DB username
-        protected String dbPassword = ""; // Your DB password
-        
+        private final String url = "jdbc:mysql://localhost:3306/chat_db"; // Your DB URL and name
+        private final String dbUser = "root"; // Your DB username
+        private final String dbPassword = ""; // Your DB password
+
         public ClientHandler(Socket socket) {
             this.socket = socket;
         }
-        
+
         public void run() {
             try {
+                startDatabaseStatusChecker();
+                
                 in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
                 out = new PrintWriter(socket.getOutputStream(), true);
-                
+
                 synchronized (clientWriters) {
                     clientWriters.add(out); // Add client writer to the set
                 }
@@ -111,7 +109,7 @@ public class ChatServer {
                                 out.println("Welcome " + username + "!"); // Send welcome message
                                 out.println("DISPLAY_NAME:" + displayName); // Send display name to the client
 
-                                sendRetrievedMessagesToClient(out, getUserId(username)); // Send messages to the client
+                                sendRetrievedMessagesToClient(out); // Send messages to the client
 
                                 broadcast(displayName + " has joined the chat."); // Notify others
                                 break; // Exit loop to start handling messages
@@ -148,12 +146,8 @@ public class ChatServer {
                 }
             }
         }
-
-
     
         private void updateActiveStatus(int userId, boolean isActive) {
-            
-
             String query = "UPDATE users SET is_active = ?, last_login = ? WHERE user_id = ?";
             try (Connection conn = DriverManager.getConnection(url, dbUser, dbPassword);
                  PreparedStatement stmt = conn.prepareStatement(query)) {
@@ -270,7 +264,7 @@ public class ChatServer {
         
 
 
-    private void sendRetrievedMessagesToClient(PrintWriter out, int userId) {
+    private void sendRetrievedMessagesToClient(PrintWriter out) {
         List<String> messages = retrieveMessages(); // Retrieve messages for the user
         StringBuilder messageBuilder = new StringBuilder();
 
@@ -336,7 +330,7 @@ public class ChatServer {
 
         return userId;
     }
-
+    
     private void broadcast(String message) {
             synchronized (clientWriters) {
                 for (PrintWriter writer : clientWriters) {
@@ -346,3 +340,4 @@ public class ChatServer {
         }
     }
 }
+

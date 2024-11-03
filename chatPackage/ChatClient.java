@@ -1,9 +1,13 @@
+package chatPackage;
+
 import javax.swing.*;
 import java.awt.*;
+import javax.swing.text.*;
 import java.io.*;
 import java.net.*;
 
-public class ChatClient {
+public class ChatClient{
+
     private Socket socket;
     private BufferedReader in;
     private PrintWriter out;
@@ -32,14 +36,13 @@ public class ChatClient {
                     // Start a thread to listen for incoming messages
                     new Thread(new IncomingMessageHandler()).start();
 
-                    chatInterface.displayMessage("Connected to the server.");
+                    chatInterface.displayMessage("Connected to the server.", Color.BLACK); // Add Color
                     chatInterface.enableLogin();
-                    
                     break; // Exit loop once connected
 
                 } catch (IOException e) {
-                    chatInterface.displayMessage("Error: Unable to connect to the server. Retrying...");
-                    
+                    chatInterface.displayMessage("Error: Unable to connect to the server. Retrying...", Color.RED); // Add Color
+
                     // Wait for a few seconds before retrying
                     try {
                         Thread.sleep(3000); // 3-second delay
@@ -61,11 +64,10 @@ public class ChatClient {
             e.printStackTrace();
         }
     }
-    
+
     public void sendLoginCredentials(String username, String password) {
         this.username = username;
         this.password = password;
-
         out.println("LOGIN:" + username + ":" + password);
     }
 
@@ -73,7 +75,7 @@ public class ChatClient {
         if (displayName != null) {
             String formattedMessage = "MESSAGE:" + displayName + ":null:" + message;
             out.println(formattedMessage);
-            chatInterface.displayMessage("You: " + message);
+//            chatInterface.displayMessage("You: " + message, Color.BLACK); // Change to dark green if desired
         } else {
             System.out.println("Error: Login is required.");
         }
@@ -85,18 +87,19 @@ public class ChatClient {
         }
 
         String[] messageParts = message.split(": ", 2);
-        
+        Color DarkGreen = new Color(0, 100, 10);
+
         if (messageParts.length == 2) {
             String senderDisplayName = messageParts[0];
             String messageContent = messageParts[1];
 
             if (senderDisplayName.equals(displayName)) {
-                chatInterface.displayMessage("You: " + messageContent);
+                chatInterface.displayMessage("You: " + messageContent, DarkGreen); // Change to dark green if desired
             } else {
-                chatInterface.displayMessage(senderDisplayName + ": " + messageContent);
+                chatInterface.displayMessage(senderDisplayName + ": " + messageContent, Color.BLUE);
             }
         } else {
-            chatInterface.displayMessage(message);
+            chatInterface.displayMessage(message, Color.BLACK);
         }
     }
 
@@ -110,37 +113,35 @@ public class ChatClient {
             if (messageParts.length == 2) {
                 String senderDisplayName = messageParts[0];
                 String messageContent = messageParts[1];
-
-                                
-                chatInterface.displayMessage(senderDisplayName + ": " + messageContent);
-                                
+                chatInterface.displayMessage(senderDisplayName + ": " + messageContent, Color.BLACK);
             }
         }
     }
-    
+
     private class IncomingMessageHandler implements Runnable {
+
         @Override
         public void run() {
             try {
                 String message;
                 while ((message = in.readLine()) != null) {
                     if (message.startsWith("Welcome")) {
-                        chatInterface.displayMessage("Login successful! You can start chatting.");
+                        chatInterface.displayMessage("Login successful! You can start chatting.", Color.RED); // Add Color
                         chatInterface.clearLoginFields();
                         chatInterface.enableChat();
                     } else if (message.startsWith("DISPLAY_NAME:")) {
                         displayName = message.split(":")[1];
-                        chatInterface.displayMessage("Your display name is: " + displayName);
+                        chatInterface.displayMessage("Your display name is: " + displayName, Color.BLUE); // Add Color
                     } else if (message.startsWith("MESSAGES:")) {
                         handleRetrievedMessages(message);
                     } else if (message.equals("ERROR: Invalid username or password. Please try again.")) {
                         loginAttempts--;
-                        chatInterface.displayMessage("Invalid login. Attempts remaining: " + loginAttempts);
+                        chatInterface.displayMessage("Invalid login. Attempts remaining: " + loginAttempts, Color.RED); // Add Color
                         if (loginAttempts > 0) {
                             chatInterface.clearLoginFields();
                         } else {
                             chatInterface.disableLogin();
-                            chatInterface.displayMessage("Maximum login attempts reached. Please restart the application.");
+                            chatInterface.displayMessage("Maximum login attempts reached. Please restart the application.", Color.RED); // Add Color
                         }
                     } else {
                         handleIncomingMessage(message);
@@ -152,12 +153,14 @@ public class ChatClient {
         }
     }
 
-  
+    public boolean isLoggedIn() {
+        return displayName != null;
+    }
 
-    
-    public static class ChatInterface {
+    public static class ChatInterface  extends JFrame{
+
         private JFrame frame;
-        private JTextArea chatArea;
+        private JTextPane chatArea;
         private JTextField messageField;
         private JTextField usernameField;
         private JPasswordField passwordField;
@@ -167,13 +170,10 @@ public class ChatClient {
         private JPanel userPanel;
         private JButton cancelButton;
         private ChatClient chatClient;
+        private StyledDocument doc;
 
         public ChatInterface() {
             initializeUI();
-        }
-
-        public void clearChatArea() {
-            chatArea.setText("");
         }
 
         public void setChatClient(ChatClient chatClient) {
@@ -182,21 +182,54 @@ public class ChatClient {
 
         private void initializeUI() {
             frame = new JFrame("Chat Client");
-            chatArea = new JTextArea(20, 50);
+            chatArea = new JTextPane();
+            chatArea.setEditable(false);
+            doc = chatArea.getStyledDocument();
             messageField = new JTextField(40);
             usernameField = new JTextField(15);
             passwordField = new JPasswordField(15);
             sendButton = new JButton("Send");
             loginButton = new JButton("Login");
             addUserButton = new JButton("Add User");
-            cancelButton = new JButton("Cancel");
+            cancelButton = new JButton("Logout and Close");
             userPanel = new JPanel();
 
-            messageField.setEditable(false);
-            chatArea.setEditable(false);
+            // Set background colors
+            frame.getContentPane().setBackground(new Color(255, 255, 255));
+            chatArea.setBackground(new Color(236, 229, 221));
+            messageField.setBackground(new Color(255, 255, 255));
+            usernameField.setBackground(new Color(255, 255, 255));
+            passwordField.setBackground(new Color(255, 255, 255));
+
+            chatArea.setForeground(new Color(0, 0, 0));
+            messageField.setForeground(new Color(0, 0, 0));
+            usernameField.setForeground(new Color(0, 0, 0));
+            passwordField.setForeground(new Color(0, 0, 0));
+
+            // Set button colors
+            sendButton.setBackground(new Color(37, 211, 102));
+            sendButton.setForeground(new Color(255, 255, 255));
+            loginButton.setBackground(new Color(37, 211, 102));
+            loginButton.setForeground(Color.WHITE);
+            addUserButton.setBackground(new Color(0, 123, 255));
+            addUserButton.setForeground(Color.WHITE);
+            cancelButton.setBackground(new Color(255, 0, 0));
+            cancelButton.setForeground(Color.WHITE);
+
+            // Set fonts
+            Font font = new Font("Poppins", Font.PLAIN, 20);
+            chatArea.setFont(font);
+            messageField.setFont(font);
+            usernameField.setFont(font);
+            passwordField.setFont(font);
+            sendButton.setFont(font);
+            loginButton.setFont(font);
+            addUserButton.setFont(font);
+            cancelButton.setFont(font);
+
             JScrollPane scrollPane = new JScrollPane(chatArea);
             userPanel.setLayout(new BorderLayout());
-            userPanel.setPreferredSize(new Dimension(300, 0));
+            userPanel.setPreferredSize(new Dimension(300, 500));
 
             JPanel topPanel = new JPanel(new BorderLayout());
             topPanel.add(new JLabel("Online Users"), BorderLayout.WEST);
@@ -214,13 +247,40 @@ public class ChatClient {
             frame.setLayout(new BorderLayout());
             frame.add(splitPane, BorderLayout.CENTER);
 
+            // Create the login panel
             JPanel loginPanel = new JPanel();
-            loginPanel.add(new JLabel("Username:"));
+            loginPanel.setLayout(new FlowLayout(FlowLayout.LEFT)); // Align components to the left
+
+            // Create and set the icon
+            // Create and set the icon
+            ImageIcon icon = new ImageIcon("D:\\Documents\\NetBeansProjects\\Chat Application\\src\\chatPackage\\whatsapp.jpg"); // Specify the path to your image
+            JLabel iconLabel = new JLabel(icon);
+            loginPanel.add(iconLabel); // Add the icon label to the panel
+
+// Add the "WhatsApp (Clone)" label in green
+            JLabel cloneLabel = new JLabel("WhatsApp (Clone)                     ");
+            cloneLabel.setFont(font); // Set the font (optional)
+            cloneLabel.setForeground(new Color(0, 100, 0)); // Set the text color to green
+            loginPanel.add(cloneLabel); // Add the clone label to the panel
+
+// Username label and field
+            JLabel usernameLabel = new JLabel("Username:");
+            usernameLabel.setFont(font); // Set the font
+            loginPanel.add(usernameLabel);
             loginPanel.add(usernameField);
-            loginPanel.add(new JLabel("Password:"));
+            loginPanel.setBackground(new Color(255, 255, 255));
+
+// Password label and field
+            JLabel passwordLabel = new JLabel("Password:");
+            passwordLabel.setFont(font); // Set the font
+            loginPanel.add(passwordLabel);
             loginPanel.add(passwordField);
+
+// Add buttons
             loginPanel.add(cancelButton);
             loginPanel.add(loginButton);
+
+            // Add the login panel to the frame
             frame.add(loginPanel, BorderLayout.NORTH);
 
             JPanel inputPanel = new JPanel();
@@ -231,7 +291,7 @@ public class ChatClient {
             frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
             frame.pack();
             frame.setVisible(true);
-            
+
             sendButton.setEnabled(false);
             addUserButton.setEnabled(false);
 
@@ -241,7 +301,7 @@ public class ChatClient {
             sendButton.addActionListener(e -> sendMessage());
             messageField.addActionListener(e -> sendMessage());
             addUserButton.addActionListener(e -> addUser());
-            cancelButton.addActionListener(e -> cancelConnectionAttempt()); 
+            cancelButton.addActionListener(e -> cancelConnectionAttempt());
         }
 
         private void attemptLogin() {
@@ -259,7 +319,7 @@ public class ChatClient {
         }
 
         private void addUser() {
-            displayMessage("Add User functionality will be added soon.");
+            displayMessage("Add User functionality will be added soon.", Color.BLACK);
         }
 
         public void clearLoginFields() {
@@ -295,12 +355,30 @@ public class ChatClient {
         }
 
         private void cancelConnectionAttempt() {
-            chatClient.cancelConnectionAttempt();  // Trigger cancel on ChatClient
-            displayMessage("Connection canceled by user.");
+            chatClient.cancelConnectionAttempt();
+            displayMessage("Connection canceled by user.", Color.BLACK);
+            if (chatClient.isLoggedIn()) {
+                messageField.setEnabled(true);
+                sendButton.setEnabled(true);
+                addUserButton.setEnabled(true);
+            } else {
+                usernameField.setEnabled(true);
+                passwordField.setEnabled(true);
+                loginButton.setEnabled(true);
+            }
+            messageField.setEditable(false);
+            sendButton.setEnabled(false);
+            System.exit(1);
         }
-        
-        public void displayMessage(String message) {
-            chatArea.append(message + "\n");
+
+        public void displayMessage(String message, Color color) {
+            try {
+                Style style = chatArea.addStyle("Style", null);
+                StyleConstants.setForeground(style, color);
+                doc.insertString(doc.getLength(), message + "\n", style);
+            } catch (BadLocationException e) {
+                e.printStackTrace();
+            }
         }
 
         public void updateUserList(String[] users) {
@@ -309,13 +387,15 @@ public class ChatClient {
         }
     }
 
-    public static void main(String[] args) {
-        String serverAddress = "localhost";
-        int port = 12345;
-
+public static void main(String[] args) {
+    SwingUtilities.invokeLater(() -> {
         ChatInterface chatInterface = new ChatInterface();
-        ChatClient chatClient = new ChatClient(serverAddress, port, chatInterface);
+        chatInterface.setSize(500, 500); // Set the size of the chat interface
+        chatInterface.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE); // Ensure the application closes on exit
+        ChatClient client = new ChatClient("localhost", 12345, chatInterface);
+        chatInterface.setChatClient(client);
+//        chatInterface.setVisible(true); // Make the chat interface visible
+    });
+}
 
-        chatInterface.setChatClient(chatClient);
-    }
 }
