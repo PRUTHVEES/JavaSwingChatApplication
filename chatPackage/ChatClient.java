@@ -91,11 +91,10 @@ public class ChatClient{
                 chatInterface.displayMessage(message,Color.RED);
             } else if(message.contains("ADD_USER_INVITE")) {
                 handleInvitations(message);
-            } else if(message.contains("ACCEPTED_INVITE#1")) {
-                chatInterface.updateUserList();
-            } else if(message.contains("REJECTED_INVITE#1")) {
-                String parts[] = message.split(":");
-                chatInterface.displayMessage("The invite sent to the User " + parts[2] + " has been rejected.",Color.RED);
+            } else if(message.contains("INVITE_ACCEPTED")) {
+                chatInterface.displayMessage(message,Color.RED);
+            } else if(message.contains("INVITE_REJECTED")) {
+                chatInterface.displayMessage(message,Color.RED);
             }
         } else {
             String[] messageParts = message.split(": ", 2);
@@ -132,15 +131,17 @@ public class ChatClient{
     }
 
     private void handleInvitations(String message) {
-        int response = JOptionPane.showConfirmDialog(null, "Do you want to send an invitation?", "Send Invitation", JOptionPane.YES_NO_OPTION);
         String parts[] = message.split(":");
         String invitationSenderId = parts[2];
         
+        int response = JOptionPane.showConfirmDialog(null, "Do you want to accept an invitation from " + invitationSenderId, "Send Invitation", JOptionPane.YES_NO_OPTION);
+        
+        
         if(response == JOptionPane.YES_OPTION) {
-            out.println(invitationSenderId + ":ACCEPTED_INVITE#:" + userId);    
+            out.println("INVITE_ACCEPTED:" + invitationSenderId + ":" + userId);    
         //    updateUserList();
         } else if(response == JOptionPane.NO_OPTION) {
-            out.println(invitationSenderId + ":REJECTED_INVITE#2:" + userId);
+            out.println("INVITE_REJECTED:" + invitationSenderId + ":" + userId);
         }
     }
 
@@ -358,7 +359,7 @@ public class ChatClient{
         private void addUser() {
             try {
                 int userToInvite = Integer.parseInt(JOptionPane.showInputDialog(null, "Send an invitation to Add User with his/her User ID: ", "User ID Input", JOptionPane.QUESTION_MESSAGE));
-                chatClient.sendInvitation("AddUser:" + userToInvite + ":");
+                chatClient.sendInvitation("INVITE:" + userToInvite + ":");
             } catch(NumberFormatException e) {
                 displayMessage("Please enter some input!",Color.BLACK);
             }

@@ -51,7 +51,7 @@ public class ChatServer {
                 return;
             }else {
                 System.out.println("Database connection restored.");
-                broadcast("INFO: Database connection restored.");
+                //broadcast("INFO: Database connection restored.");
             }
         }, 0, 5, TimeUnit.SECONDS); // Check every 5 seconds
     }
@@ -106,10 +106,12 @@ public class ChatServer {
                             if (checkCredentials(usernameAttempt, passwordAttempt)) {
                                 username = usernameAttempt; // Set username on successful login
                                 int userId = getUserId(usernameAttempt);
+                                turnUserToActiveState(userId);
+
                                 String displayName = getDisplayName(usernameAttempt); // Get display name from the database
 
                                 out.println("Welcome " + username + "!"); // Send welcome message
-                                out.println("USER_ID: " + userId);
+                                out.println("USER_ID:" + userId);
                                 out.println("DISPLAY_NAME:" + displayName); // Send display name to the client
 
                                 sendRetrievedMessagesToClient(out); // Send messages to the client
@@ -128,16 +130,6 @@ public class ChatServer {
                 while ((message = in.readLine()) != null) {
                     if (username != null) {
                         handleMessage(message, out);
-                    } else if (message.contains("adduser")) {
-                        String parts[] = message.split(":"); //AddUser:<Receiver>:<Sender>
-                        String receiverId = parts[1];
-                        String senderId = parts[2]; 
-                        
-                        handleInvitationToUser(receiverId,senderId);
-                    } else if(message.contains("ACCEPTED_INVITE#1")) {
-                        sendMessageToClient(message);
-                    } else if(message.contains("REJECTED_INVITE#2")) {
-                        sendMessageToClient(message);
                     } else {
                         out.println("ERROR: Message format is incorrect. Use: MESSAGE:userId:chatRoomId:messageContent");
                     }
@@ -176,23 +168,41 @@ public class ChatServer {
         
         private void handleMessage(String message, PrintWriter out) {
             // Example message format: MESSAGE:<displayName>:<chatRoomId>:<messageContent>
-            String[] parts = message.split(":");
-            if (parts.length == 4 && parts[0].equals("MESSAGE")) {
-                String displayName = parts[1];
-                int chatRoomId;
-                if(!(parts[2].equals("null"))) { 
-                    chatRoomId = Integer.parseInt(parts[2]);
+            if(message.startsWith("INVITE")) {
+                String[] parts = message.split(":");
+                String receiverId = parts[1];
+                String senderId = parts[2];
+                handleInvitationToUser(receiverId, senderId);
+            } else if (message.startsWith("INVITE_ACCEPTED")) {
+                String[] parts = message.split(":");
+                String senderId = parts[1];
+                String receiverId = parts[2];
+                sendMessageToClient("User " + receiverId + " accepted your invite.");
+            } else if (message.startsWith("INVITE_REJECTED")) {
+                String[] parts = message.split(":");
+                String senderId = parts[1];
+                String receiverId = parts[2];
+                sendMessageToClient("User " + receiverId + " rejected your invite.");
+                // Optionally update the database to reflect the invitation was rejected
                 } else {
-                    chatRoomId = -1;
-                }  // If you're using chat rooms
-                
-                String messageContent = parts[3];
+                String[] parts = message.split(":");
+                if (parts.length == 4 && parts[0].equals("MESSAGE")) {
+                    String displayName = parts[1];
+                    int chatRoomId;
+                    if(!(parts[2].equals("null"))) { 
+                        chatRoomId = Integer.parseInt(parts[2]);
+                    } else {
+                        chatRoomId = -1;
+                    }  // If you're using chat rooms
 
-                // Store the message in the database
-                saveMessageToDatabase(displayName, messageContent, chatRoomId);
+                    String messageContent = parts[3];
 
-                // Broadcast the message to all clients
-                broadcast(displayName + ": " + messageContent);
+                    // Store the message in the database
+                    saveMessageToDatabase(displayName, messageContent, chatRoomId);
+
+                    // Broadcast the message to all clients
+                    broadcast(displayName + ": " + messageContent);
+                }
             }
         }
 
@@ -353,6 +363,21 @@ public class ChatServer {
         }
     }
 
+    private void turnUserToActiveState(int userId) {
+        // Query to insert the new message into the chats table
+        String query = "UPDATE users SET is_active = 1 WHERE user_id = ?";
+
+        try (Connection conn = DriverManager.getConnection(url, dbUser, dbPassword);
+            PreparedStatement stmt = conn.prepareStatement(query)) {
+        
+            stmt.setInt(1, userId);
+            
+            stmt.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+    
     private int getUserIdFromDisplayName(String displayName) {
         String query = "SELECT user_id FROM users WHERE displayname = ?";
         int userId = -1;
