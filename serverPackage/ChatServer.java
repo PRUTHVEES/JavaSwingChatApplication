@@ -168,17 +168,17 @@ public class ChatServer {
         
         private void handleMessage(String message, PrintWriter out) {
             // Example message format: MESSAGE:<displayName>:<chatRoomId>:<messageContent>
-            if(message.startsWith("INVITE")) {
+            if(message.contains("ADD_USER_INVITE")) {
                 String[] parts = message.split(":");
                 String receiverId = parts[1];
                 String senderId = parts[2];
                 handleInvitationToUser(receiverId, senderId);
-            } else if (message.startsWith("INVITE_ACCEPTED")) {
+            } else if (message.contains("INVITE_ACCEPTED")) {
                 String[] parts = message.split(":");
                 String senderId = parts[1];
                 String receiverId = parts[2];
                 sendMessageToClient("User " + receiverId + " accepted your invite.");
-            } else if (message.startsWith("INVITE_REJECTED")) {
+            } else if (message.contains("INVITE_REJECTED")) {
                 String[] parts = message.split(":");
                 String senderId = parts[1];
                 String receiverId = parts[2];
