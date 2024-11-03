@@ -12,6 +12,8 @@ public class ChatServer {
     private static final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
     private static volatile boolean isDatabaseAvailable = false; // Track database status
     private static boolean alreadyNotified = false; 
+    private static final int USER_ACTIVE = 1;
+    private static final int USER_INACTIVE = 0;
     
     private static boolean isDatabaseOnline() {
         String url = "jdbc:mysql://localhost:3306/chat_db"; // Replace with your database URL
@@ -126,9 +128,16 @@ public class ChatServer {
                 while ((message = in.readLine()) != null) {
                     if (username != null) {
                         handleMessage(message, out);
-                    } else if (message.startsWith("AddUser")) {
-                        String parts[] = message.split(":");
-                        out.println("ADD_USER_INVITE:" + parts[1] + parts[2]);
+                    } else if (message.contains("adduser")) {
+                        String parts[] = message.split(":"); //AddUser:<Receiver>:<Sender>
+                        String receiverId = parts[1];
+                        String senderId = parts[2]; 
+                        
+                        handleInvitationToUser(receiverId,senderId);
+                    } else if(message.contains("ACCEPTED_INVITE#1")) {
+                        sendMessageToClient(message);
+                    } else if(message.contains("REJECTED_INVITE#2")) {
+                        sendMessageToClient(message);
                     } else {
                         out.println("ERROR: Message format is incorrect. Use: MESSAGE:userId:chatRoomId:messageContent");
                     }
@@ -241,7 +250,37 @@ public class ChatServer {
             }
             return false; // Return false if credentials are invalid
         }
+        
+        private void sendMessageToClient(String message) {
+            if (out != null) {
+                out.println(message);
+            }
+        }
 
+
+        private void handleInvitationToUser(String toSendInviteTo,String userId) {
+            String query = "SELECT is_active FROM users WHERE user_id = ?";
+            try (Connection conn = DriverManager.getConnection(url, dbUser, dbPassword);
+                PreparedStatement stmt = conn.prepareStatement(query)) {
+
+                stmt.setString(1, toSendInviteTo);
+                try (ResultSet rs = stmt.executeQuery()) {
+                    if (rs.next()) {
+                        int status = rs.getInt("is_active");
+                        if(status == USER_ACTIVE) {
+				 sendMessageToClient(toSendInviteTo + ":ADD_USER_INVITE:" + userId);
+			} else if(status == USER_INACTIVE) {
+				sendMessageToClient(userId + ":RESP_USER_INVITE:Server cannot send request to this user right now");
+			}
+	            } else {
+			sendMessageToClient(userId + ":USER_NOT_FOUND");
+		    } 
+                }
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        }
+        
         private List<String> retrieveMessages() {
 
             // Modify the query to select all messages without filtering by user_id

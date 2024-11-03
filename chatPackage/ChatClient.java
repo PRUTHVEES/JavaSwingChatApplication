@@ -72,12 +72,14 @@ public class ChatClient{
     }
 
     public void sendMessage(String message) {
-        if((displayName != null) && message.startsWith("AddUser")) {
-            out.println(message);
-        }  else if (displayName != null) {
-            String formattedMessage = "MESSAGE:" + displayName + ":null:" + message;
-            out.println(formattedMessage);
-//            chatInterface.displayMessage("You: " + message, Color.BLACK); // Change to dark green if desired
+        if (displayName != null) {
+            if(message.toLowerCase().contains("adduser") || message.toLowerCase().contains("rejectuser")) {
+                out.println(message);
+            } else {
+                String formattedMessage = "MESSAGE:" + displayName + ":null:" + message;
+                out.println(formattedMessage);
+                 //chatInterface.displayMessage("You: " + message, Color.BLACK); // Change to dark green if desired
+            }
         } else {
             System.out.println("Error: Login is required.");
         }
@@ -100,8 +102,6 @@ public class ChatClient{
             } else {
                 chatInterface.displayMessage(senderDisplayName + ": " + messageContent, Color.BLUE);
             }
-        } else if(message.equals("ADD_USER_INVITE:" + userId)) {
-            handleInvitations(out);
         } else {
             chatInterface.displayMessage(message, Color.BLACK);
         }
@@ -122,13 +122,16 @@ public class ChatClient{
         }
     }
 
-    private void handleInvitations(PrintWriter out) {
+    private void handleInvitations(String message) {
         int response = JOptionPane.showConfirmDialog(null, "Do you want to send an invitation?", "Send Invitation", JOptionPane.YES_NO_OPTION);
+        String parts[] = message.split(":");
+        String invitationSenderId = parts[2];
         
         if(response == JOptionPane.YES_OPTION) {
-            updateUserList();
+            out.println(invitationSenderId + ":ACCEPTED_INVITE#:" + userId);    
+        //    updateUserList();
         } else if(response == JOptionPane.NO_OPTION) {
-            return;
+            out.println(invitationSenderId + ":REJECTED_INVITE#2:" + userId);
         }
     }
 
@@ -149,6 +152,8 @@ public class ChatClient{
                         chatInterface.displayMessage("Your display name is: " + displayName, Color.BLUE); // Add Color
                     } else if (message.startsWith("MESSAGES:")) {
                         handleRetrievedMessages(message);
+                    } else if(message.contains("ADD_USER_INVITE")) {
+                        handleInvitations(message);
                     } else if (message.equals("ERROR: Invalid username or password. Please try again.")) {
                         loginAttempts--;
                         chatInterface.displayMessage("Invalid login. Attempts remaining: " + loginAttempts, Color.RED); // Add Color
@@ -169,8 +174,9 @@ public class ChatClient{
     }
 
     public void sendInvitation(String invitationString) {
-        sendMessage(invitationString + ":" + userId);
+        sendMessage(invitationString + userId); //AddUser:<Receiver>:<Sender>
     }
+    
     
     public boolean isLoggedIn() {
         return displayName != null;
@@ -340,7 +346,7 @@ public class ChatClient{
         private void addUser() {
             try {
                 int userToInvite = Integer.parseInt(JOptionPane.showInputDialog(null, "Send an invitation to Add User with his/her User ID: ", "User ID Input", JOptionPane.QUESTION_MESSAGE));
-                chatClient.sendInvitation("AddUser:" + userToInvite);
+                chatClient.sendInvitation("AddUser:" + userToInvite + ":");
             } catch(NumberFormatException e) {
                 System.out.println(e.getMessage());
             }
