@@ -1,12 +1,17 @@
+package serverPackage;
+
 import java.io.*;
 import java.net.*;
 import java.sql.*;
 import java.util.*;
+import java.util.concurrent.*;
 
 public class ChatServer {
     private static final int PORT = 12345; // Define the port
     private static Set<PrintWriter> clientWriters = new HashSet<>();
-
+    private static final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
+    private static boolean isDatabaseAvailable = false; // Track database status
+    
     private static boolean isDatabaseOnline() {
         String url = "jdbc:mysql://localhost:3306/chat_db"; // Replace with your database URL
         String dbUser = "root"; // Replace with your database username
@@ -20,9 +25,37 @@ public class ChatServer {
         }
     }
 
+    private static void startDatabaseStatusChecker() {
+        scheduler.scheduleAtFixedRate(() -> {
+            boolean currentlyAvailable = checkDatabaseConnection();
+            if (currentlyAvailable != isDatabaseAvailable) {
+                isDatabaseAvailable = currentlyAvailable;
+
+                if (!isDatabaseAvailable) {
+                    System.out.println("Database is offline. Notifying connected clients.");
+                    notifyClients("ERROR: Database is not active. Please try again later.");
+                } else {
+                    System.out.println("Database connection restored.");
+                }
+            }
+        }, 0, 5, TimeUnit.SECONDS); // Check every 5 seconds
+    }
+    
+    private static boolean checkDatabaseConnection() {
+        try (Connection conn = DriverManager.getConnection("jdbc:mysql://localhost:3306/chat_db", "root", "")) {
+            return true; // Database is online and reachable
+        } catch (SQLException e) {
+            System.out.println("Database connection failed: " + e.getMessage());
+            return false; // Database is offline or unreachable
+        }
+    }
+    
+    
     
     public static void main(String[] args) {
         System.out.println("Chat Server started...");
+        startDatabaseStatusChecker();
+        
         try (ServerSocket serverSocket = new ServerSocket(PORT)) {
             while (true) {
                 new ClientHandler(serverSocket.accept()).start(); // Handle new client connections
@@ -32,6 +65,12 @@ public class ChatServer {
         }
     }
 
+    private static void notifyClients(String message) {
+        for (PrintWriter writer : clientWriters) {
+            writer.println(message);
+        }
+    }
+    
     private static class ClientHandler extends Thread {
         private Socket socket;
         private PrintWriter out;
@@ -49,13 +88,7 @@ public class ChatServer {
             try {
                 in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
                 out = new PrintWriter(socket.getOutputStream(), true);
-
-                // Check if the database is online before proceeding
-                if (!isDatabaseOnline()) {
-                    out.println("ERROR: Database is not active. Please try again later.");
-                    return; // Stop further execution for this client
-                }
-
+                
                 synchronized (clientWriters) {
                     clientWriters.add(out); // Add client writer to the set
                 }
