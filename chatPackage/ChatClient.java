@@ -72,7 +72,9 @@ public class ChatClient{
     }
 
     public void sendMessage(String message) {
-        if (displayName != null) {
+        if((displayName != null) && message.startsWith("AddUser")) {
+            out.println(message);
+        }  else if (displayName != null) {
             String formattedMessage = "MESSAGE:" + displayName + ":null:" + message;
             out.println(formattedMessage);
 //            chatInterface.displayMessage("You: " + message, Color.BLACK); // Change to dark green if desired
@@ -98,6 +100,8 @@ public class ChatClient{
             } else {
                 chatInterface.displayMessage(senderDisplayName + ": " + messageContent, Color.BLUE);
             }
+        } else if(message.equals("ADD_USER_INVITE:" + userId)) {
+            handleInvitations(out);
         } else {
             chatInterface.displayMessage(message, Color.BLACK);
         }
@@ -118,8 +122,17 @@ public class ChatClient{
         }
     }
 
-    private class IncomingMessageHandler implements Runnable {
+    private void handleInvitations(PrintWriter out) {
+        int response = JOptionPane.showConfirmDialog(null, "Do you want to send an invitation?", "Send Invitation", JOptionPane.YES_NO_OPTION);
+        
+        if(response == JOptionPane.YES_OPTION) {
+            updateUserList();
+        } else if(response == JOptionPane.NO_OPTION) {
+            return;
+        }
+    }
 
+    private class IncomingMessageHandler implements Runnable {
         @Override
         public void run() {
             try {
@@ -129,6 +142,8 @@ public class ChatClient{
                         chatInterface.displayMessage("Login successful! You can start chatting.", Color.RED); // Add Color
                         chatInterface.clearLoginFields();
                         chatInterface.enableChat();
+                    } else if (message.startsWith("USER_ID:")) {
+                        userId = Integer.parseInt(message.split(":")[1]);
                     } else if (message.startsWith("DISPLAY_NAME:")) {
                         displayName = message.split(":")[1];
                         chatInterface.displayMessage("Your display name is: " + displayName, Color.BLUE); // Add Color
@@ -153,6 +168,10 @@ public class ChatClient{
         }
     }
 
+    public void sendInvitation(String invitationString) {
+        sendMessage(invitationString + ":" + userId);
+    }
+    
     public boolean isLoggedIn() {
         return displayName != null;
     }
@@ -319,7 +338,12 @@ public class ChatClient{
         }
 
         private void addUser() {
-            displayMessage("Add User functionality will be added soon.", Color.BLACK);
+            try {
+                int userToInvite = Integer.parseInt(JOptionPane.showInputDialog(null, "Send an invitation to Add User with his/her User ID: ", "User ID Input", JOptionPane.QUESTION_MESSAGE));
+                chatClient.sendInvitation("AddUser:" + userToInvite);
+            } catch(NumberFormatException e) {
+                System.out.println(e.getMessage());
+            }
         }
 
         public void clearLoginFields() {

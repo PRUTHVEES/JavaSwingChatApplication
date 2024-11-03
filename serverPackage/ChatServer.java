@@ -107,6 +107,7 @@ public class ChatServer {
                                 String displayName = getDisplayName(usernameAttempt); // Get display name from the database
 
                                 out.println("Welcome " + username + "!"); // Send welcome message
+                                out.println("USER_ID: " + userId);
                                 out.println("DISPLAY_NAME:" + displayName); // Send display name to the client
 
                                 sendRetrievedMessagesToClient(out); // Send messages to the client
@@ -125,6 +126,9 @@ public class ChatServer {
                 while ((message = in.readLine()) != null) {
                     if (username != null) {
                         handleMessage(message, out);
+                    } else if (message.startsWith("AddUser")) {
+                        String parts[] = message.split(":");
+                        out.println("ADD_USER_INVITE:" + parts[1] + parts[2]);
                     } else {
                         out.println("ERROR: Message format is incorrect. Use: MESSAGE:userId:chatRoomId:messageContent");
                     }
