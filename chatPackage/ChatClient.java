@@ -73,13 +73,9 @@ public class ChatClient{
 
     public void sendMessage(String message) {
         if (displayName != null) {
-            if(message.toLowerCase().contains("adduser") || message.toLowerCase().contains("rejectuser")) {
-                out.println(message);
-            } else {
                 String formattedMessage = "MESSAGE:" + displayName + ":null:" + message;
                 out.println(formattedMessage);
                  //chatInterface.displayMessage("You: " + message, Color.BLACK); // Change to dark green if desired
-            }
         } else {
             System.out.println("Error: Login is required.");
         }
@@ -90,20 +86,33 @@ public class ChatClient{
             return;
         }
 
-        String[] messageParts = message.split(": ", 2);
-        Color DarkGreen = new Color(0, 100, 10);
-
-        if (messageParts.length == 2) {
-            String senderDisplayName = messageParts[0];
-            String messageContent = messageParts[1];
-
-            if (senderDisplayName.equals(displayName)) {
-                chatInterface.displayMessage("You: " + messageContent, DarkGreen); // Change to dark green if desired
-            } else {
-                chatInterface.displayMessage(senderDisplayName + ": " + messageContent, Color.BLUE);
+        if(message.startsWith(String.valueOf(userId))) {
+            if(message.contains("RESP_USER_INVITE") || message.contains("USER_NOT_FOUND")) {
+                chatInterface.displayMessage(message,Color.RED);
+            } else if(message.contains("ADD_USER_INVITE")) {
+                handleInvitations(message);
+            } else if(message.contains("ACCEPTED_INVITE#1")) {
+                chatInterface.updateUserList();
+            } else if(message.contains("REJECTED_INVITE#1")) {
+                String parts[] = message.split(":");
+                chatInterface.displayMessage("The invite sent to the User " + parts[2] + " has been rejected.",Color.RED);
             }
         } else {
-            chatInterface.displayMessage(message, Color.BLACK);
+            String[] messageParts = message.split(": ", 2);
+            Color DarkGreen = new Color(0, 100, 10);
+
+            if (messageParts.length == 2) {
+                String senderDisplayName = messageParts[0];
+                String messageContent = messageParts[1];
+
+                if (senderDisplayName.equals(displayName)) {
+                    chatInterface.displayMessage("You: " + messageContent, DarkGreen); // Change to dark green if desired
+                } else {
+                    chatInterface.displayMessage(senderDisplayName + ": " + messageContent, Color.BLUE);
+                }
+            } else {
+                chatInterface.displayMessage(message, Color.BLACK);
+            }
         }
     }
 
@@ -174,9 +183,8 @@ public class ChatClient{
     }
 
     public void sendInvitation(String invitationString) {
-        sendMessage(invitationString + userId); //AddUser:<Receiver>:<Sender>
+        out.println(invitationString + userId); //AddUser:<Receiver>:<Sender>
     }
-    
     
     public boolean isLoggedIn() {
         return displayName != null;
@@ -343,12 +351,16 @@ public class ChatClient{
             }
         }
 
+        public void updateUserList() {
+            System.out.println("Lol! You expected some output");
+        }
+        
         private void addUser() {
             try {
                 int userToInvite = Integer.parseInt(JOptionPane.showInputDialog(null, "Send an invitation to Add User with his/her User ID: ", "User ID Input", JOptionPane.QUESTION_MESSAGE));
                 chatClient.sendInvitation("AddUser:" + userToInvite + ":");
             } catch(NumberFormatException e) {
-                System.out.println(e.getMessage());
+                displayMessage("Please enter some input!",Color.BLACK);
             }
         }
 

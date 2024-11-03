@@ -258,7 +258,7 @@ public class ChatServer {
         }
 
 
-        private void handleInvitationToUser(String toSendInviteTo,String userId) {
+        private void handleInvitationToUser(String toSendInviteTo,String userIdOfReceiver) {
             String query = "SELECT is_active FROM users WHERE user_id = ?";
             try (Connection conn = DriverManager.getConnection(url, dbUser, dbPassword);
                 PreparedStatement stmt = conn.prepareStatement(query)) {
@@ -266,14 +266,14 @@ public class ChatServer {
                 stmt.setString(1, toSendInviteTo);
                 try (ResultSet rs = stmt.executeQuery()) {
                     if (rs.next()) {
-                        int status = rs.getInt("is_active");
+                        int status = rs.getInt("is_active"); //Checks if the user is active or not to receive invitations
                         if(status == USER_ACTIVE) {
-				 sendMessageToClient(toSendInviteTo + ":ADD_USER_INVITE:" + userId);
+                            sendMessageToClient(toSendInviteTo + ":ADD_USER_INVITE:" + userIdOfReceiver);
 			} else if(status == USER_INACTIVE) {
-				sendMessageToClient(userId + ":RESP_USER_INVITE:Server cannot send request to this user right now");
+                            sendMessageToClient(userIdOfReceiver + ":RESP_USER_INVITE:Server cannot send request to this user right now");
 			}
 	            } else {
-			sendMessageToClient(userId + ":USER_NOT_FOUND");
+			sendMessageToClient(userIdOfReceiver + ":USER_NOT_FOUND");
 		    } 
                 }
             } catch (SQLException e) {
@@ -282,8 +282,7 @@ public class ChatServer {
         }
         
         private List<String> retrieveMessages() {
-
-            // Modify the query to select all messages without filtering by user_id
+        // Modify the query to select all messages without filtering by user_id
             String query = "SELECT u.displayname, c.message_content FROM chats c JOIN users u ON c.user_id = u.user_id ORDER BY c.timestamp"; // Order by timestamp if you want messages in chronological order
             List<String> messages = new ArrayList<>();
 
