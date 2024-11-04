@@ -83,13 +83,11 @@ public class ChatClient{
     }
 
     private void handleIncomingMessage(String message) {
-        if (message.startsWith(displayName + " has joined")) {
-            return;
-        }
         if(message.contains("_USER") || message.contains("INVITE_")) {
-            if(message.contains("RESP_USER_INVITE") || message.contains("USER_NOT_FOUND")) {
+            if(message.startsWith(String.valueOf(userId) + ":RESP_USER_INVITE") || message.startsWith(String.valueOf(userId) + ":USER_NOT_FOUND")) {
                 chatInterface.displayMessage(message,Color.RED);
-            } else if(message.contains("ADD_USER_INVITE:" + userId)) {
+            } else if(message.contains("ADD_USER_INVITE:")) {
+                System.out.println("Control Here");
                 handleInvitations(message);
             } else if(message.contains("INVITE_ACCEPTED") && message.endsWith(String.valueOf(userId))) {
                 String parts[] = message.split(":");
@@ -102,7 +100,12 @@ public class ChatClient{
             String[] parts = message.split(":");
             String[] users = Arrays.copyOfRange(parts, 1, parts.length); // Skip "Users" part
             chatInterface.updateUserList(users);
+            return;
         } else {
+            if (message.startsWith(displayName + " has joined")) {
+                return;
+            }
+            
             String[] messageParts = message.split(": ", 2);
             Color DarkGreen = new Color(0, 100, 10);
 
@@ -138,14 +141,20 @@ public class ChatClient{
 
     private void handleInvitations(String message) {
         String parts[] = message.split(":");
-        String invitationSenderId = parts[2];
-        
-        int response = JOptionPane.showConfirmDialog(null, displayName + "? Do you want to accept an invitation from " + invitationSenderId, "Send Invitation", JOptionPane.YES_NO_OPTION);
-        
-        if(response == JOptionPane.YES_OPTION) {
-            out.println("INVITE_ACCEPTED:" + invitationSenderId + ":" + userId);    
-        } else if(response == JOptionPane.NO_OPTION) {
-            out.println("INVITE_REJECTED:" + invitationSenderId + ":" + userId);
+        System.out.println(message);
+        if(parts[1].equals(String.valueOf(userId))) {
+            String invitationSenderId = parts[2];
+
+            int response = JOptionPane.showConfirmDialog(null, displayName + "? Do you want to accept an invitation from " + invitationSenderId, "Send Invitation", JOptionPane.YES_NO_OPTION);
+
+            if(response == JOptionPane.YES_OPTION) {
+                out.println("INVITE_ACCEPTED:" + invitationSenderId + ":" + userId);    
+            } else if(response == JOptionPane.NO_OPTION) {
+                out.println("INVITE_REJECTED:" + invitationSenderId + ":" + userId);
+            }
+        } else {
+            System.out.println("User Id does not match");
+            return;
         }
     }
 
@@ -289,10 +298,12 @@ public class ChatClient{
 
             // Create and set the icon
             // Create and set the icon
-            ImageIcon icon = new ImageIcon("chatPackage\\whatsapp.jpg"); // Specify the path to your image
+            ImageIcon icon = new ImageIcon("C:\\Users\\pruth\\OneDrive\\Documents\\NetBeansProjects\\Chat Application\\src\\chatPackage\\whatsapp.jpg"); // Specify the path to your image
             JLabel iconLabel = new JLabel(icon);
             loginPanel.add(iconLabel); // Add the icon label to the panel
 
+            
+            
 // Add the "WhatsApp (Clone)" label in green
             JLabel cloneLabel = new JLabel("WhatsApp (Clone)                     ");
             cloneLabel.setFont(font); // Set the font (optional)
@@ -424,7 +435,11 @@ public class ChatClient{
 
         public void updateUserList(String[] users) {
             JTextArea usersArea = (JTextArea) ((JScrollPane) userPanel.getComponent(1)).getViewport().getView();
-            usersArea.setText(String.join("\n",users));
+            //usersArea.setText(String.join("\n",users));
+            
+            for(String user : users) {
+                usersArea.setText(user + "\n");
+            }
         }
     }
 

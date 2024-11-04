@@ -169,10 +169,8 @@ public class ChatServer {
         private void handleMessage(String message, PrintWriter out) {
             // Example message format: MESSAGE:<displayName>:<chatRoomId>:<messageContent>
             if(message.contains("ADD_USER_INVITE")) {
-                String[] parts = message.split(":");
-                String receiverId = parts[1];
-                String senderId = parts[2];
-                handleInvitationToUser(receiverId, senderId);
+                System.out.println("Add user invitation");
+                handleInvitationToUser(message);
             } else if (message.contains("INVITE_ACCEPTED")) {
                 String parts[] = message.split(":");
                 String senderId = parts[1];
@@ -249,7 +247,7 @@ public class ChatServer {
         
         public void saveContactToDatabase(String senderId, String receiverId) {
             // Query to insert the new message into the chats table
-            String query = "INSERT INTO chats (user_id, contact_user_id, added_at) VALUES (?, ?, NOW())";
+            String query = "INSERT INTO contacts (user_id, contact_user_id, added_at) VALUES (?, ?, NOW())";
 
             try (Connection conn = DriverManager.getConnection(url, dbUser, dbPassword);
                 PreparedStatement stmt = conn.prepareStatement(query)) {
@@ -308,22 +306,27 @@ public class ChatServer {
         }
 
 
-        private void handleInvitationToUser(String toSendInviteTo,String userIdOfSender) {
+        private void handleInvitationToUser(String message) {
             String query = "SELECT is_active FROM users WHERE user_id = ?";
             try (Connection conn = DriverManager.getConnection(url, dbUser, dbPassword);
                 PreparedStatement stmt = conn.prepareStatement(query)) {
-
+                
+                String userIdOfSender = String.valueOf(message.split(":")[2]);
+                String toSendInviteTo = String.valueOf(message.split(":")[1]);
+                
                 stmt.setString(1, toSendInviteTo);
                 try (ResultSet rs = stmt.executeQuery()) {
                     if (rs.next()) {
                         int status = rs.getInt("is_active"); //Checks if the user is active or not to receive invitations
                         if(status == USER_ACTIVE) {
-                            sendMessageToClient(toSendInviteTo + ":ADD_USER_INVITE:" + userIdOfSender);
+                            broadcast(message);
+                            System.out.println("User invitation sent");
 			} else if(status == USER_INACTIVE) {
-                            sendMessageToClient(userIdOfSender + ":RESP_USER_INVITE:Server cannot send request to this user right now");
+                            broadcast(userIdOfSender + ":RESP_USER_INVITE:Server cannot send request to this user right now");
+                            System.out.println("User invitation sent");
 			}
 	            } else {
-			sendMessageToClient(userIdOfSender + ":USER_NOT_FOUND");
+			broadcast(userIdOfSender + ":USER_NOT_FOUND");
 		    } 
                 }
             } catch (SQLException e) {
