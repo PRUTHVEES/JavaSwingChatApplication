@@ -177,8 +177,11 @@ public class ChatServer {
                 String parts[] = message.split(":");
                 String senderId = parts[1];
                 String receiverID = parts[2];
-                saveContactToDatabase(senderId,receiverID);
-                sendMessageToClient(message);
+                
+                saveContactToDatabase(senderId,receiverID); //Save Contact to Contacts Table
+                String users = retrieveContactsFromDB(senderId);
+                
+                sendMessageToClient(users);
             } else if (message.contains("INVITE_REJECTED")) {
                 String[] parts = message.split(":");
                 String senderId = parts[1];
@@ -260,6 +263,26 @@ public class ChatServer {
             }
         }
         
+        public String retrieveContactsFromDB(String senderId) {
+            String query = "SELECT contact_user_id FROM users WHERE user_id = ?";
+            String users = "Users";
+            try (Connection conn = DriverManager.getConnection(url, dbUser, dbPassword);
+                 PreparedStatement stmt = conn.prepareStatement(query)) {
+
+                stmt.setString(1, username);
+                try (ResultSet rs = stmt.executeQuery()) {
+                    while (rs.next()) {
+                        String storedUser = rs.getString("contact_user_id");
+                        users += ":" + storedUser;
+                    }
+                    return users;
+                }
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+            return users;
+        }
+        
         private boolean checkCredentials(String username, String password) {
             String query = "SELECT password FROM users WHERE username = ?";
             try (Connection conn = DriverManager.getConnection(url, dbUser, dbPassword);
@@ -285,7 +308,7 @@ public class ChatServer {
         }
 
 
-        private void handleInvitationToUser(String toSendInviteTo,String userIdOfReceiver) {
+        private void handleInvitationToUser(String toSendInviteTo,String userIdOfSender) {
             String query = "SELECT is_active FROM users WHERE user_id = ?";
             try (Connection conn = DriverManager.getConnection(url, dbUser, dbPassword);
                 PreparedStatement stmt = conn.prepareStatement(query)) {
@@ -295,12 +318,12 @@ public class ChatServer {
                     if (rs.next()) {
                         int status = rs.getInt("is_active"); //Checks if the user is active or not to receive invitations
                         if(status == USER_ACTIVE) {
-                            sendMessageToClient(toSendInviteTo + ":ADD_USER_INVITE:" + userIdOfReceiver);
+                            sendMessageToClient(toSendInviteTo + ":ADD_USER_INVITE:" + userIdOfSender);
 			} else if(status == USER_INACTIVE) {
-                            sendMessageToClient(userIdOfReceiver + ":RESP_USER_INVITE:Server cannot send request to this user right now");
+                            sendMessageToClient(userIdOfSender + ":RESP_USER_INVITE:Server cannot send request to this user right now");
 			}
 	            } else {
-			sendMessageToClient(userIdOfReceiver + ":USER_NOT_FOUND");
+			sendMessageToClient(userIdOfSender + ":USER_NOT_FOUND");
 		    } 
                 }
             } catch (SQLException e) {

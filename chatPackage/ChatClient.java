@@ -4,6 +4,7 @@ import javax.swing.*;
 import java.awt.*;
 import javax.swing.text.*;
 import java.io.*;
+import java.util.*;
 import java.net.*;
 
 public class ChatClient{
@@ -85,18 +86,22 @@ public class ChatClient{
         if (message.startsWith(displayName + " has joined")) {
             return;
         }
-        if(message.contains("_USER") || ) {
+        if(message.contains("_USER") || message.contains("INVITE_")) {
             if(message.contains("RESP_USER_INVITE") || message.contains("USER_NOT_FOUND")) {
                 chatInterface.displayMessage(message,Color.RED);
-            } else if(message.contains("ADD_USER_INVITE")) {
+            } else if(message.contains("ADD_USER_INVITE:" + userId)) {
                 handleInvitations(message);
-            } else if(message.contains("USER_INVITE_ACCEPTED") && message.endsWith(String.valueOf(userId))) {
+            } else if(message.contains("INVITE_ACCEPTED") && message.endsWith(String.valueOf(userId))) {
                 String parts[] = message.split(":");
-                
-                chatInterface.displayMessage("User " + parts[1],Color.RED);
-            } else if(message.contains("USER_INVITE_REJECTED")) {
-                chatInterface.displayMessage(message,Color.RED);
+                chatInterface.displayMessage("User " + parts[2] + " accepted yout Invitation",Color.GREEN);
+            } else if(message.contains("INVITE_REJECTED")) {
+                String parts[] = message.split(":");
+                chatInterface.displayMessage("User " + parts[2] + " rejected yout Invitation",Color.RED);
             }
+        } else if(message.startsWith("Users:")) {
+            String[] parts = message.split(":");
+            String[] users = Arrays.copyOfRange(parts, 1, parts.length); // Skip "Users" part
+            chatInterface.updateUserList(users);
         } else {
             String[] messageParts = message.split(": ", 2);
             Color DarkGreen = new Color(0, 100, 10);
@@ -135,11 +140,10 @@ public class ChatClient{
         String parts[] = message.split(":");
         String invitationSenderId = parts[2];
         
-        int response = JOptionPane.showConfirmDialog(null, "Do you want to accept an invitation from " + invitationSenderId, "Send Invitation", JOptionPane.YES_NO_OPTION);
+        int response = JOptionPane.showConfirmDialog(null, displayName + "? Do you want to accept an invitation from " + invitationSenderId, "Send Invitation", JOptionPane.YES_NO_OPTION);
         
         if(response == JOptionPane.YES_OPTION) {
             out.println("INVITE_ACCEPTED:" + invitationSenderId + ":" + userId);    
-            chatInterface.updateUserList();
         } else if(response == JOptionPane.NO_OPTION) {
             out.println("INVITE_REJECTED:" + invitationSenderId + ":" + userId);
         }
@@ -273,7 +277,7 @@ public class ChatClient{
             userPanel.add(new JScrollPane(usersArea), BorderLayout.CENTER);
 
             JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, scrollPane, userPanel);
-            splitPane.setDividerLocation(500);
+            splitPane.setDividerLocation(300);
             splitPane.setResizeWeight(0.8);
 
             frame.setLayout(new BorderLayout());
@@ -285,7 +289,7 @@ public class ChatClient{
 
             // Create and set the icon
             // Create and set the icon
-            ImageIcon icon = new ImageIcon("D:\\Documents\\NetBeansProjects\\Chat Application\\src\\chatPackage\\whatsapp.jpg"); // Specify the path to your image
+            ImageIcon icon = new ImageIcon("chatPackage\\whatsapp.jpg"); // Specify the path to your image
             JLabel iconLabel = new JLabel(icon);
             loginPanel.add(iconLabel); // Add the icon label to the panel
 
@@ -348,10 +352,6 @@ public class ChatClient{
                 chatClient.sendMessage(message);
                 messageField.setText("");
             }
-        }
-
-        public void updateUserList() {
-            System.out.println("Lol! You expected some output");
         }
         
         private void addUser() {
@@ -424,7 +424,7 @@ public class ChatClient{
 
         public void updateUserList(String[] users) {
             JTextArea usersArea = (JTextArea) ((JScrollPane) userPanel.getComponent(1)).getViewport().getView();
-            usersArea.setText(String.join("\n", users));
+            usersArea.setText(String.join("\n",users));
         }
     }
 
