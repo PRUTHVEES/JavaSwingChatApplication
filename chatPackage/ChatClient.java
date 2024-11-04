@@ -85,15 +85,16 @@ public class ChatClient{
         if (message.startsWith(displayName + " has joined")) {
             return;
         }
-
-        if(message.startsWith(String.valueOf(userId))) {
+        if(message.contains("_USER") || ) {
             if(message.contains("RESP_USER_INVITE") || message.contains("USER_NOT_FOUND")) {
                 chatInterface.displayMessage(message,Color.RED);
             } else if(message.contains("ADD_USER_INVITE")) {
                 handleInvitations(message);
-            } else if(message.contains("INVITE_ACCEPTED")) {
-                chatInterface.displayMessage(message,Color.RED);
-            } else if(message.contains("INVITE_REJECTED")) {
+            } else if(message.contains("USER_INVITE_ACCEPTED") && message.endsWith(String.valueOf(userId))) {
+                String parts[] = message.split(":");
+                
+                chatInterface.displayMessage("User " + parts[1],Color.RED);
+            } else if(message.contains("USER_INVITE_REJECTED")) {
                 chatInterface.displayMessage(message,Color.RED);
             }
         } else {
@@ -138,7 +139,7 @@ public class ChatClient{
         
         if(response == JOptionPane.YES_OPTION) {
             out.println("INVITE_ACCEPTED:" + invitationSenderId + ":" + userId);    
-        //    updateUserList();
+            chatInterface.updateUserList();
         } else if(response == JOptionPane.NO_OPTION) {
             out.println("INVITE_REJECTED:" + invitationSenderId + ":" + userId);
         }

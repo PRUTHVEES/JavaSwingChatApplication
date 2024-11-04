@@ -174,15 +174,16 @@ public class ChatServer {
                 String senderId = parts[2];
                 handleInvitationToUser(receiverId, senderId);
             } else if (message.contains("INVITE_ACCEPTED")) {
-                String[] parts = message.split(":");
+                String parts[] = message.split(":");
                 String senderId = parts[1];
-                String receiverId = parts[2];
-                sendMessageToClient("User " + receiverId + " accepted your invite.");
+                String receiverID = parts[2];
+                saveContactToDatabase(senderId,receiverID);
+                sendMessageToClient(message);
             } else if (message.contains("INVITE_REJECTED")) {
                 String[] parts = message.split(":");
                 String senderId = parts[1];
                 String receiverId = parts[2];
-                sendMessageToClient("User " + receiverId + " rejected your invite.");
+                sendMessageToClient(message);
                 // Optionally update the database to reflect the invitation was rejected
                 } else {
                 String[] parts = message.split(":");
@@ -241,6 +242,22 @@ public class ChatServer {
                 e.printStackTrace();
         }
     return displayName; // Return the display name or null if not found
+        }
+        
+        public void saveContactToDatabase(String senderId, String receiverId) {
+            // Query to insert the new message into the chats table
+            String query = "INSERT INTO chats (user_id, contact_user_id, added_at) VALUES (?, ?, NOW())";
+
+            try (Connection conn = DriverManager.getConnection(url, dbUser, dbPassword);
+                PreparedStatement stmt = conn.prepareStatement(query)) {
+
+                stmt.setString(1, senderId);
+                stmt.setString(2, receiverId);
+
+                stmt.executeUpdate();
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
         }
         
         private boolean checkCredentials(String username, String password) {
