@@ -21,10 +21,8 @@ public class ChatServer {
         String dbPassword = ""; // Replace with your database password
 
         try (Connection conn = DriverManager.getConnection(url, dbUser, dbPassword)) {
-            System.out.println("Database is online");
             return true; // Database is online and reachable
         } catch (SQLException e) {
-            System.out.println("Database connection failed: " + e.getMessage());
             return false; // Database is offline or unreachable
         }
     }

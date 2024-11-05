@@ -84,8 +84,10 @@ public class ChatClient{
 
     private void handleIncomingMessage(String message) {
         if(message.contains("_USER") || message.contains("INVITE_")) {
-            if(message.startsWith(String.valueOf(userId) + ":RESP_USER_INVITE") || message.startsWith(String.valueOf(userId) + ":USER_NOT_FOUND")) {
-                chatInterface.displayMessage(message,Color.RED);
+            if(message.contains(":RESP_USER_INVITE") || message.contains(":USER_NOT_FOUND")) {
+                if(String.valueOf(userId).equals(message.split(":")[0])) {
+                    chatInterface.displayMessage(message,Color.RED);
+                }
             } else if(message.contains("ADD_USER_INVITE:")) {
                 System.out.println("Control Here");
                 handleInvitations(message);
